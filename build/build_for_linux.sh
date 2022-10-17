@@ -1,0 +1,1 @@
+cc main.c mongoose/mongoose.c -o server_lin.exe
