@@ -48,7 +48,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
       if(mg_json_get_str(json, "$.sec_url") != NULL){
         const char *secondary_url = mg_json_get_str(json, "$.sec_url");
         MG_INFO((secondary_url));
-        mg_http_reply(c, 200, final_headers, "{}");//dashboard requires valid json
+        mg_http_reply(c, 200, final_headers, "{}");
       }else{
         mg_http_reply(c, 400, final_headers, "The required parameters are not given");
       }
