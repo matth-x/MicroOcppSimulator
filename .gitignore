@@ -2,3 +2,4 @@
 .vs
 *.exe
 *.obj
+build_and_run.sh

@@ -1,1 +1,1 @@
-cc main.c mongoose/mongoose.c -o server_lin.exe
+g++ main.cpp mongoose/mongoose.c -fpermissive -o server_lin.exe
