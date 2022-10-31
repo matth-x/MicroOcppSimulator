@@ -16,7 +16,8 @@ char* toStringPtr(std::string cppString){
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_HTTP_MSG) {
-    struct mg_http_message *message_data = (struct mg_http_message *) ev_data;
+    //struct mg_http_message *message_data = (struct mg_http_message *) ev_data;
+    struct mg_http_message *message_data = reinterpret_cast<struct mg_http_message *>(ev_data);
     static std::string default_header = "Content-Type: application/json\r\n";
     const char *final_headers = toStringPtr(default_header + cors_headers);
     struct mg_str json = message_data->body;
@@ -58,14 +59,14 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     else{
       struct mg_http_serve_opts opts = { .root_dir = "./public" };
       opts.extra_headers = "Content-Type: text/html\r\nContent-Encoding: gzip\r\n";
-      mg_http_serve_file(c, ev_data, "public/bundle.html.gz", &opts);
+      mg_http_serve_file(c, message_data, "public/bundle.html.gz", &opts);
     }
   }
 }
 
 int main() {
   struct mg_mgr mgr;
-  //mg_log_set(MG_LL_DEBUG);                            
+  mg_log_set(MG_LL_DEBUG);                            
   mg_mgr_init(&mgr);
   mg_http_listen(&mgr, "0.0.0.0:8000", fn, NULL);     // Create listening connection
   for (;;) mg_mgr_poll(&mgr, 1000);                   // Block forever
