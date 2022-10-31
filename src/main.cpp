@@ -1,5 +1,10 @@
 #include "mongoose/mongoose.h"
 #include <string>
+#include <iostream>
+
+#include <ArduinoOcpp.h>
+#include <ArduinoOcpp/Core/OcppSocket.h>
+#include <ArduinoOcpp/Platform.h>
 
 static const char *s_http_addr = "http://localhost:8000";  // HTTP port
 static const char *s_root_dir = "web_root";
@@ -64,12 +69,27 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   }
 }
 
+void cpp_console_out(const char *msg) {
+    std::cout << msg;
+}
+
 int main() {
   struct mg_mgr mgr;
   mg_log_set(MG_LL_DEBUG);                            
   mg_mgr_init(&mgr);
   mg_http_listen(&mgr, "0.0.0.0:8000", fn, NULL);     // Create listening connection
-  for (;;) mg_mgr_poll(&mgr, 1000);                   // Block forever
+
+  ao_set_console_out(cpp_console_out);
+
+  ArduinoOcpp::OcppEchoSocket echoSocket;
+  OCPP_initialize(echoSocket);
+
+  bootNotification("test", "123");
+
+  for (;;) {                    // Block forever
+    mg_mgr_poll(&mgr, 1000);
+    OCPP_loop();
+  }
   mg_mgr_free(&mgr);
   return 0;
 }
