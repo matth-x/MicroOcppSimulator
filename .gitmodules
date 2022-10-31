@@ -1,4 +1,8 @@
+[submodule "ArduinoJson"]
+     path = lib/ArduinoJson
+     url = https://github.com/bblanchon/ArduinoJson.git
+
 [submodule "ArduinoOcpp"]
-     path = lib/SubmoduleTestRepo
+     path = lib/ArduinoOcpp
      url = https://github.com/matth-x/ArduinoOcpp.git
      branch = develop
