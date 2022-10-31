@@ -1,0 +1,4 @@
+[submodule "ArduinoOcpp"]
+     path = lib/SubmoduleTestRepo
+     url = https://github.com/matth-x/ArduinoOcpp.git
+     branch = develop
