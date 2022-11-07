@@ -1,95 +1,74 @@
 #include "mongoose/mongoose.h"
-#include <string>
+#include "webserver.h"
+#include "ws_adapter.h"
+#include "evse.h"
 #include <iostream>
 
 #include <ArduinoOcpp.h>
-#include <ArduinoOcpp/Core/OcppSocket.h>
+#include <ArduinoOcpp/Core/Configuration.h>
+#include <ArduinoOcpp/Core/FilesystemAdapter.h>
 #include <ArduinoOcpp/Platform.h>
 
-static const char *s_http_addr = "http://localhost:8000";  // HTTP port
-static const char *s_root_dir = "web_root";
+#define OCPP_CREDENTIALS_FN (AO_FILENAME_PREFIX "/ocpp-creds.jsn")
 
-//cors_headers allow the browser to make requests from any domain, allowing all headers and all methods
-static std::string cors_headers = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers:Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers\r\nAccess-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT\r\n";
+struct mg_mgr mgr;
+AoMongooseAdapter osock {&mgr};
 
-
-char* toStringPtr(std::string cppString){
-  char *cstr = new char[cppString.length() + 1];
-  strcpy(cstr, cppString.c_str());
-  return cstr;
-}
-
-static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-  if (ev == MG_EV_HTTP_MSG) {
-    //struct mg_http_message *message_data = (struct mg_http_message *) ev_data;
-    struct mg_http_message *message_data = reinterpret_cast<struct mg_http_message *>(ev_data);
-    static std::string default_header = "Content-Type: application/json\r\n";
-    const char *final_headers = toStringPtr(default_header + cors_headers);
-    struct mg_str json = message_data->body;
-
-    //start different api endpoints
-    if(mg_http_match_uri(message_data, "/api/set_backend_url")){
-      //check that body contains data, minimum: "{}"
-      if(json.len < 2){
-        //no body so it is a preflight request
-        mg_http_reply(c, 200, final_headers, "preflight");
-        return;
-      }
-      //check that desired value exists
-      if(mg_json_get_str(json, "$.url") != NULL){
-        const char *backend_url = mg_json_get_str(json, "$.url");
-        MG_INFO((backend_url));
-        mg_http_reply(c, 200, final_headers, "{}");//dashboard requires valid json
-      }else{
-        //status code 400 -> Bad Request
-        mg_http_reply(c, 400, final_headers, "The required parameters are not given");
-      }
-    }
-
-    else if(mg_http_match_uri(message_data, "/api/secondary_url")){
-      if(json.len < 2){
-        mg_http_reply(c, 200, final_headers, "preflight");
-        return;
-      }
-      if(mg_json_get_str(json, "$.sec_url") != NULL){
-        const char *secondary_url = mg_json_get_str(json, "$.sec_url");
-        MG_INFO((secondary_url));
-        mg_http_reply(c, 200, final_headers, "{}");
-      }else{
-        mg_http_reply(c, 400, final_headers, "The required parameters are not given");
-      }
-    }
-
-    //if no specific path is given serve dashboard application file
-    else{
-      struct mg_http_serve_opts opts = { .root_dir = "./public" };
-      opts.extra_headers = "Content-Type: text/html\r\nContent-Encoding: gzip\r\n";
-      mg_http_serve_file(c, message_data, "public/bundle.html.gz", &opts);
-    }
-  }
-}
-
-void cpp_console_out(const char *msg) {
-    std::cout << msg;
-}
+std::array<Evse, OCPP_NUMCONNECTORS - 1> connectors {{1,2}};
 
 int main() {
-  struct mg_mgr mgr;
-  mg_log_set(MG_LL_DEBUG);                            
-  mg_mgr_init(&mgr);
-  mg_http_listen(&mgr, "0.0.0.0:8000", fn, NULL);     // Create listening connection
+    mg_log_set(MG_LL_DEBUG);                            
+    mg_mgr_init(&mgr);
 
-  ao_set_console_out(cpp_console_out);
+    //mgr.dns4.url = "udp://134.95.127.1:53";
+    
+    mg_http_listen(&mgr, "0.0.0.0:8000", http_serve, NULL);     // Create listening connection
 
-  ArduinoOcpp::OcppEchoSocket echoSocket;
-  OCPP_initialize(echoSocket);
+    std::shared_ptr<ArduinoOcpp::FilesystemAdapter> filesystem = 
+        ArduinoOcpp::makeDefaultFilesystemAdapter(ArduinoOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
+    ArduinoOcpp::configuration_init(filesystem);
 
-  bootNotification("test", "123");
+    std::shared_ptr<ArduinoOcpp::Configuration<const char *>> ocpp_backend = ArduinoOcpp::declareConfiguration<const char *>(
+        "AO_BackendUrl", "", OCPP_CREDENTIALS_FN, true, true, true, true);
+    std::shared_ptr<ArduinoOcpp::Configuration<const char *>> ocpp_cbId = ArduinoOcpp::declareConfiguration<const char *>(
+        "AO_ChargeBoxId", "", OCPP_CREDENTIALS_FN, true, true, true, true);
+    std::shared_ptr<ArduinoOcpp::Configuration<const char *>> ocpp_auth = ArduinoOcpp::declareConfiguration<const char *>(
+        "AO_BasicAuthKey", "", OCPP_CREDENTIALS_FN, true, true, true, true);
+    std::shared_ptr<ArduinoOcpp::Configuration<const char *>> ocpp_ca = ArduinoOcpp::declareConfiguration<const char *>(
+        "AO_CaCert", "", OCPP_CREDENTIALS_FN, true, true, true, true);
+    
+    if (!ocpp_backend || !ocpp_cbId || ! ocpp_auth || !ocpp_ca) {
+        AO_DBG_ERR("init error");
+        return 1;
+    }
 
-  for (;;) {                    // Block forever
-    mg_mgr_poll(&mgr, 1000);
-    OCPP_loop();
-  }
-  mg_mgr_free(&mgr);
-  return 0;
+    ArduinoOcpp::configuration_save(); //write empty OCPP credentials file to FS
+
+    osock.setUrl(*ocpp_backend, *ocpp_cbId);
+    osock.setAuthToken(*ocpp_auth);
+    osock.setCa(*ocpp_ca);
+
+    OCPP_initialize(osock);
+
+    for (unsigned int i = 0; i < connectors.size(); i++) {
+        connectors[i].setup();
+    }
+
+    std::shared_ptr<ArduinoOcpp::Configuration<int>> wsPing = ArduinoOcpp::declareConfiguration<int>(
+        "WebSocketPingInterval", 5, CONFIGURATION_FN, true, true, true, true);
+    if (wsPing && *wsPing >= 0) {
+        osock.setHeartbeatInterval(*wsPing * 1000);
+    }
+
+    bootNotification("Demo Client", "ArduinoOcpp");
+
+    for (;;) {                    // Block forever
+        mg_mgr_poll(&mgr, 100);
+        OCPP_loop();
+        for (unsigned int i = 0; i < connectors.size(); i++) {
+            connectors[i].loop();
+        }
+    }
+    mg_mgr_free(&mgr);
+    return 0;
 }
