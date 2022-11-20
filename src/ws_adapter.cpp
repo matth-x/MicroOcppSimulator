@@ -1,20 +1,75 @@
 #include "ws_adapter.h"
-#include "mongoose/mongoose.h"
 #include "base64.hpp"
-#include <ArduinoOcpp/Platform.h>
 #include <ArduinoOcpp/Core/Configuration.h>
 #include <ArduinoOcpp/Debug.h>
 
-#define OCPP_CREDENTIALS_FN (AO_FILENAME_PREFIX "/ocpp-creds.jsn")
+#define OCPP_CREDENTIALS_FN AO_FILENAME_PREFIX "/ocpp-creds.jsn"
 
 #define DEBUG_MSG_INTERVAL 5000UL
-#define MG_WEBSOCKET_PING_INTERVAL_MS 5000UL
-#define WS_UNRESPONSIVE_THRESHOLD_MS 5000UL
-#define RECONNECT_AFTER 5000UL
+#define WS_UNRESPONSIVE_THRESHOLD_MS 15000UL
+#define RECONNECT_AFTER 60000UL
 
 void ws_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data);
 
-AoMongooseAdapter::AoMongooseAdapter(struct mg_mgr *mgr) : mgr(mgr) {
+AoMongooseAdapter::AoMongooseAdapter(struct mg_mgr *mgr,
+            const char *backend_url_default, 
+            const char *charge_box_id_default,
+            const char *auth_key_default,
+            const char *CA_cert_default,
+            std::shared_ptr<ArduinoOcpp::FilesystemAdapter> filesystem) : mgr(mgr) {
+    
+    const char *fn;
+    bool write_permission;
+    
+    if (filesystem) {
+        ArduinoOcpp::configuration_init(filesystem);
+
+        //all credentials are persistent over reboots
+
+        fn = OCPP_CREDENTIALS_FN;
+        write_permission = true;
+    } else {
+        //make the credentials non-persistent
+        AO_DBG_WARN("Credentials non-persistent. Use ArduinoOcpp::makeDefaultFilesystemAdapter(...) for persistency");
+
+        fn = CONFIGURATION_VOLATILE OCPP_CREDENTIALS_FN;
+        write_permission = false;
+    }
+
+    setting_backend_url = ArduinoOcpp::declareConfiguration<const char*>(
+        "AO_BackendUrl", backend_url_default ? backend_url_default : "",
+        fn, write_permission, true, true, true);
+    setting_cb_id = ArduinoOcpp::declareConfiguration<const char*>(
+        "AO_ChargeBoxId", charge_box_id_default ? charge_box_id_default : "",
+        fn, write_permission, true, true, true);
+    setting_auth_key = ArduinoOcpp::declareConfiguration<const char*>(
+        "AuthorizationKey", auth_key_default ? auth_key_default : "",
+        fn, write_permission, true, true, true);
+#if !AO_CA_CERT_USE_FILE
+    setting_ca_cert = ArduinoOcpp::declareConfiguration<const char*>(
+        "AO_CaCert", CA_cert_default ? CA_cert_default : "",
+        fn, write_permission, true, true, true);
+#endif
+
+    ws_ping_interval = ArduinoOcpp::declareConfiguration<int>(
+        "WebSocketPingInterval", 5, fn, true, true, true, true);
+
+    ArduinoOcpp::configuration_save();
+
+    backend_url = setting_backend_url && *setting_backend_url ? *setting_backend_url : 
+        (backend_url_default ? backend_url_default : "");
+    cb_id = setting_cb_id && *setting_cb_id ? *setting_cb_id : 
+        (charge_box_id_default ? charge_box_id_default : "");
+    auth_key = setting_auth_key && *setting_auth_key ? *setting_auth_key : 
+        (auth_key_default ? auth_key_default : "");
+    
+#if !AO_CA_CERT_USE_FILE
+    ca_cert = setting_ca_cert && *setting_ca_cert ? *setting_ca_cert : 
+        (CA_cert_default ? CA_cert_default : "");
+#else
+    ca_cert = CA_cert_default ? CA_cert_default : "";
+#endif
+
     maintainWsConn();
 }
 
@@ -34,10 +89,11 @@ bool AoMongooseAdapter::sendTXT(std::string &out) {
     size_t sent = mg_ws_send(websocket, out.c_str(), out.length(), WEBSOCKET_OP_TEXT);
     if (sent < out.length()) {
         AO_DBG_WARN("mg_ws_send did only accept %zu out of %zu bytes", sent, out.length());
-        return false;
-    } else {
-        return true;
+        //flush broken package and wait for next retry
+        (void)0;
     }
+
+    return true;
 }
 
 void AoMongooseAdapter::maintainWsConn() {
@@ -47,13 +103,13 @@ void AoMongooseAdapter::maintainWsConn() {
         //WS successfully connected?
         if (!connection_established) {
             AO_DBG_DEBUG("WS unconnected");
-        } else if (ao_tick_ms() - last_recv >= MG_WEBSOCKET_PING_INTERVAL_MS + WS_UNRESPONSIVE_THRESHOLD_MS) {
+        } else if (ao_tick_ms() - last_recv >= (ws_ping_interval && *ws_ping_interval > 0 ? (*ws_ping_interval * 1000UL) : 0UL) + WS_UNRESPONSIVE_THRESHOLD_MS) {
             //WS connected but unresponsive
             AO_DBG_DEBUG("WS unresponsive");
         }
     }
 
-    if (url.empty()) {
+    if (backend_url.empty()) {
         //OCPP connection should be closed
         if (websocket) {
             AO_DBG_INFO("Closing websocket");
@@ -62,7 +118,7 @@ void AoMongooseAdapter::maintainWsConn() {
         return;
     }
 
-    if (hb_interval > 0 && websocket && ao_tick_ms() - last_hb >= hb_interval) {
+    if (ws_ping_interval && *ws_ping_interval > 0 && websocket && ao_tick_ms() - last_hb >= (*ws_ping_interval * 1000UL)) {
         last_hb = ao_tick_ms();
         mg_ws_send(websocket, "", 0, WEBSOCKET_OP_PING);
     }
@@ -73,6 +129,11 @@ void AoMongooseAdapter::maintainWsConn() {
 
     if (ao_tick_ms() - last_reconnection_attempt < RECONNECT_AFTER) {
         return;
+    }
+
+    if (credentials_changed) {
+        reload_credentials();
+        credentials_changed = false;
     }
 
     AO_DBG_DEBUG("(re-)connect to %s", url.c_str());
@@ -89,79 +150,27 @@ void AoMongooseAdapter::maintainWsConn() {
                       basic_auth64.empty() ? "" : basic_auth64.c_str());     // Create client
 }
 
-void AoMongooseAdapter::setUrl(const char *backend_url_cstr, const char *cbId_cstr) {
+void AoMongooseAdapter::reload_credentials() {
     url.clear();
-
-    if (!backend_url_cstr && !cbId_cstr) {
-        AO_DBG_ERR("invalid arguments");
-        return;
-    }
-    if (backend_url_cstr) {
-        backend_url = backend_url_cstr;
-        std::shared_ptr<ArduinoOcpp::Configuration<const char *>> ocpp_backend = ArduinoOcpp::declareConfiguration<const char *>(
-            "AO_BackendUrl", "", OCPP_CREDENTIALS_FN, true, true, true, true);
-        *ocpp_backend = backend_url_cstr;
-    }
-    if (cbId_cstr) {
-        cbId = cbId_cstr;
-        std::shared_ptr<ArduinoOcpp::Configuration<const char *>> ocpp_cbId = ArduinoOcpp::declareConfiguration<const char *>(
-            "AO_ChargeBoxId", "", OCPP_CREDENTIALS_FN, true, true, true, true);
-        *ocpp_cbId = cbId_cstr;
-    }
-
-    ArduinoOcpp::configuration_save();
-
-    std::string basic_auth_cpy = basic_auth;
-    setAuthToken(basic_auth_cpy.c_str()); //update basic auth token
+    basic_auth64.clear();
 
     if (backend_url.empty()) {
         AO_DBG_DEBUG("empty URL closes connection");
+        return;
     } else {
-        if (cbId.empty()) {
+        if (cb_id.empty()) {
             url = backend_url;
         } else {
             if (backend_url.back() != '/') {
                 backend_url.append("/");
             }
 
-            url = backend_url + cbId;
+            url = backend_url + cb_id;
         }
     }
 
-    if (websocket) {
-        AO_DBG_INFO("Resetting WS");
-        websocket->is_closing = 1; //mg will close WebSocket, callback will set websocket = nullptr
-    }
-}
-
-void AoMongooseAdapter::setCa(const char *ca) {
-    this->ca = ca;
-    std::shared_ptr<ArduinoOcpp::Configuration<const char *>> ocpp_ca = ArduinoOcpp::declareConfiguration<const char *>(
-        "AO_CaCert", "", OCPP_CREDENTIALS_FN, true, true, true, true);
-    *ocpp_ca = ca;
-    ArduinoOcpp::configuration_save();
-    if (websocket) {
-        AO_DBG_INFO("Resetting WS");
-        websocket->is_closing = 1; //mg will close WebSocket, callback will set websocket = nullptr
-    }
-}
-
-void AoMongooseAdapter::setAuthToken(const char *basic_auth_cstr) {
-
-    basic_auth64.clear();
-
-    if (!basic_auth_cstr) {
-        AO_DBG_ERR("invalid argument");
-        return;
-    }
-    basic_auth = basic_auth_cstr;
-    std::shared_ptr<ArduinoOcpp::Configuration<const char *>> ocpp_auth = ArduinoOcpp::declareConfiguration<const char *>(
-        "AO_BasicAuthKey", "", OCPP_CREDENTIALS_FN, true, true, true, true);
-    *ocpp_auth = basic_auth_cstr;
-    ArduinoOcpp::configuration_save();
-
-    if (!basic_auth.empty()) {
-        std::string token = cbId + ":" + basic_auth;
+    if (!auth_key.empty()) {
+        std::string token = cb_id + ":" + auth_key;
 
         AO_DBG_DEBUG("auth Token=%s", token.c_str());
 
@@ -175,14 +184,87 @@ void AoMongooseAdapter::setAuthToken(const char *basic_auth_cstr) {
 
         basic_auth64 = (const char*) &base64[0];
     } else {
-        AO_DBG_DEBUG("reset Basic Auth token");
+        AO_DBG_DEBUG("no authentication");
         (void) 0;
+    }
+}
+
+void AoMongooseAdapter::setBackendUrl(const char *backend_url_cstr) {
+    if (!backend_url_cstr) {
+        AO_DBG_ERR("invalid argument");
+        return;
+    }
+    backend_url = backend_url_cstr;
+
+    if (setting_backend_url) {
+        *setting_backend_url = backend_url_cstr;
+        ArduinoOcpp::configuration_save();
     }
 
     if (websocket) {
-        AO_DBG_INFO("Resetting WS");
-        websocket->is_closing = 1; //mg will close WebSocket, callback will set websocket = nullptr
+        websocket->is_closing = 1; //socket will be closed and connected again
     }
+
+    credentials_changed = true; //reload composed credentials when reconnecting the next time
+}
+
+void AoMongooseAdapter::setChargeBoxId(const char *cb_id_cstr) {
+    if (!cb_id_cstr) {
+        AO_DBG_ERR("invalid argument");
+        return;
+    }
+    cb_id = cb_id_cstr;
+
+    if (setting_cb_id) {
+        *setting_cb_id = cb_id_cstr;
+        ArduinoOcpp::configuration_save();
+    }
+
+    if (websocket) {
+        websocket->is_closing = 1; //socket will be closed and connected again
+    }
+
+    credentials_changed = true; //reload composed credentials when reconnecting the next time
+}
+
+void AoMongooseAdapter::setAuthKey(const char *auth_key_cstr) {
+    if (!auth_key_cstr) {
+        AO_DBG_ERR("invalid argument");
+        return;
+    }
+    auth_key = auth_key_cstr;
+
+    if (setting_auth_key) {
+        *setting_auth_key = auth_key_cstr;
+        ArduinoOcpp::configuration_save();
+    }
+
+    if (websocket) {
+        websocket->is_closing = 1; //socket will be closed and connected again
+    }
+
+    credentials_changed = true; //reload composed credentials when reconnecting the next time
+}
+
+void AoMongooseAdapter::setCaCert(const char *ca_cert_cstr) {
+    if (!ca_cert_cstr) {
+        AO_DBG_ERR("invalid argument");
+        return;
+    }
+    ca_cert = ca_cert_cstr;
+
+#if !AO_CA_CERT_USE_FILE
+    if (setting_ca_cert) {
+        *setting_ca_cert = ca_cert_cstr;
+        ArduinoOcpp::configuration_save();
+    }
+#endif
+
+    if (websocket) {
+        websocket->is_closing = 1; //socket will be closed and connected again
+    }
+
+    credentials_changed = true; //reload composed credentials when reconnecting the next time
 }
 
 void AoMongooseAdapter::setConnectionEstablished(bool established) {
@@ -205,8 +287,11 @@ void ws_cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     } else if (ev == MG_EV_CONNECT) {
         // If target URL is SSL/TLS, command client connection to use TLS
         if (mg_url_is_ssl(osock->getUrl())) {
-            //struct mg_tls_opts opts = {.ca = "ca.pem"};
-            struct mg_tls_opts opts = {.cert = osock->getCa()};
+#if AO_CA_CERT_USE_FILE
+            struct mg_tls_opts opts = {.ca = osock->getCaCert()}; //CaCert is filename
+#else
+            struct mg_tls_opts opts = {.cert = osock->getCaCert()}; //CaCert is plain-text cert
+#endif
             mg_tls_init(c, &opts);
         } else {
             AO_DBG_WARN("Insecure connection (WS)");

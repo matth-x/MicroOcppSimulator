@@ -12,6 +12,11 @@ static const char *s_root_dir = "web_root";
 #define DEFAULT_HEADER "Content-Type: application/json\r\n"
 #define CORS_HEADERS "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers:Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers\r\nAccess-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT\r\n"
 
+AoMongooseAdapter *ao_sock = nullptr;
+
+void server_initialize(AoMongooseAdapter *osock) {
+  ao_sock = osock;
+}
 
 char* toStringPtr(std::string cppString){
   char *cstr = new char[cppString.length() + 1];
@@ -45,22 +50,21 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
           return;
         }
         //check that desired value exists
-        const char *backend_url = mg_json_get_str(json, "$.backendUrl");
-        const char *cbId = mg_json_get_str(json, "$.chargeBoxId");
-        osock.setUrl(backend_url, cbId);
+        ao_sock->setBackendUrl(mg_json_get_str(json, "$.backendUrl"));
+        ao_sock->setChargeBoxId(mg_json_get_str(json, "$.chargeBoxId"));
 
         const char *auth_token = mg_json_get_str(json, "$.authToken");
         if (auth_token) {
-          osock.setAuthToken(auth_token);
+          ao_sock->setAuthKey(auth_token);
         }
 
         mg_http_reply(c, 200, final_headers, "{}");//dashboard requires valid json
       } else if (!mg_vcasecmp(&message_data->method, "GET")) {
         StaticJsonDocument<256> doc;
         AO_DBG_DEBUG("Set data");
-        doc["backendUrl"] = osock.getUrlBackend();
-        doc["chargeBoxId"] = osock.getChargeBoxId();
-        doc["authToken"] = osock.getAuthToken();
+        doc["backendUrl"] = ao_sock->getBackendUrl();
+        doc["chargeBoxId"] = ao_sock->getChargeBoxId();
+        doc["authToken"] = ao_sock->getAuthKey();
         AO_DBG_DEBUG("Data set");
         std::string serialized;
         serializeJson(doc, serialized);
@@ -77,15 +81,20 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
           mg_http_reply(c, 200, final_headers, "preflight");
           return;
         }
+
+#if AO_CA_CERT_USE_FILE
+        mg_http_reply(c, 400, final_headers, "CA cert cannot be updated");
+#else
         const char *ca_cert = mg_json_get_str(json, "$.caCert");
         if (ca_cert) {
-          osock.setCa(ca_cert);
+          ao_sock->setCaCert(ca_cert);
         }
-
         mg_http_reply(c, 200, final_headers, "{}");//dashboard requires valid json
+#endif
+
       } else if (!mg_vcasecmp(&message_data->method, "GET")) {
         StaticJsonDocument<1024> doc;
-        doc["caCert"] = osock.getCa();
+        doc["caCert"] = ao_sock->getCaCert();
         std::string serialized;
         serializeJson(doc, serialized);
         mg_http_reply(c, 200, final_headers, serialized.c_str());
