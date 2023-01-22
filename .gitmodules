@@ -1,0 +1,12 @@
+[submodule "lib/ArduinoJson"]
+	path = lib/ArduinoJson
+	url = https://github.com/bblanchon/ArduinoJson.git
+[submodule "lib/ArduinoOcpp"]
+	path = lib/ArduinoOcpp
+	url = https://github.com/matth-x/ArduinoOcpp
+[submodule "lib/ArduinoOcppMongoose"]
+	path = lib/ArduinoOcppMongoose
+	url = https://github.com/matth-x/ArduinoOcppMongoose
+[submodule "lib/mongoose"]
+	path = lib/mongoose
+	url = https://github.com/cesanta/mongoose
