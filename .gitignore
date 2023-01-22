@@ -3,3 +3,4 @@
 *.obj
 build_and_run.sh
 ao_store
+build
