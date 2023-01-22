@@ -51,6 +51,6 @@ public:
 
 };
 
-extern std::array<Evse, OCPP_NUMCONNECTORS - 1> connectors;
+extern std::array<Evse, AO_NUMCONNECTORS - 1> connectors;
 
 #endif

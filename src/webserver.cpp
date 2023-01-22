@@ -1,6 +1,6 @@
 #include "webserver.h"
 #include "evse.h"
-#include "ws_adapter.h"
+#include <ArduinoOcppMongooseClient.h>
 #include <string>
 #include <ArduinoJson.h>
 #include <ArduinoOcpp/Debug.h>
@@ -12,9 +12,9 @@ static const char *s_root_dir = "web_root";
 #define DEFAULT_HEADER "Content-Type: application/json\r\n"
 #define CORS_HEADERS "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers:Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers\r\nAccess-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT\r\n"
 
-AoMongooseAdapter *ao_sock = nullptr;
+ArduinoOcpp::AOcppMongooseClient *ao_sock = nullptr;
 
-void server_initialize(AoMongooseAdapter *osock) {
+void server_initialize(ArduinoOcpp::AOcppMongooseClient *osock) {
   ao_sock = osock;
 }
 
@@ -35,7 +35,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     char cIdRaw [10];
     if (mg_http_get_var(&message_data->query, "connectorId", cIdRaw, 10) > 0) {
       int connectorId = cIdRaw[0] - '0';
-      if (connectorId >= 1 && connectorId < OCPP_NUMCONNECTORS) {
+      if (connectorId >= 1 && connectorId < AO_NUMCONNECTORS) {
         evse = &connectors[connectorId-1];
       }
     }

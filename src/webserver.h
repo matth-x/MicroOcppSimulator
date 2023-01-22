@@ -1,7 +1,9 @@
-#include "mongoose/mongoose.h"
+#include "mongoose.h"
 
-class AoMongooseAdapter;
+namespace ArduinoOcpp {
+class AOcppMongooseClient;
+}
 
-void server_initialize(AoMongooseAdapter *osock);
+void server_initialize(ArduinoOcpp::AOcppMongooseClient *osock);
 
 void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data);

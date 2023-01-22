@@ -1,6 +1,6 @@
-#include "mongoose/mongoose.h"
+#include "mongoose.h"
 #include "webserver.h"
-#include "ws_adapter.h"
+#include <ArduinoOcppMongooseClient.h>
 #include "evse.h"
 #include <iostream>
 
@@ -12,26 +12,28 @@
 #define OCPP_CREDENTIALS_FN (AO_FILENAME_PREFIX "/ocpp-creds.jsn")
 
 struct mg_mgr mgr;
-AoMongooseAdapter *osock;
+ArduinoOcpp::AOcppMongooseClient *osock;
 
-std::array<Evse, OCPP_NUMCONNECTORS - 1> connectors {{1,2}};
+#if AO_NUMCONNECTORS == 3
+std::array<Evse, AO_NUMCONNECTORS - 1> connectors {{1,2}};
+#else
+std::array<Evse, AO_NUMCONNECTORS - 1> connectors {{1}};
+#endif
 
 int main() {
     mg_log_set(MG_LL_DEBUG);                            
     mg_mgr_init(&mgr);
-
-    mgr.dns4.url = "udp://134.95.127.1:53";
     
     mg_http_listen(&mgr, "0.0.0.0:8000", http_serve, NULL);     // Create listening connection
 
     std::shared_ptr<ArduinoOcpp::FilesystemAdapter> filesystem = 
         ArduinoOcpp::makeDefaultFilesystemAdapter(ArduinoOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
 
-    osock = new AoMongooseAdapter(&mgr,
-        "ws://steve.extall.de:8081/steve/websocket/CentralSystemService",
-        "connection-test",
+    osock = new ArduinoOcpp::AOcppMongooseClient(&mgr,
+        "ws://echo.websocket.events",
+        "charger-01",
         "",
-        "*",
+        "",
         filesystem);
     
     server_initialize(osock);
