@@ -2,6 +2,7 @@
 #include <ArduinoOcpp.h>
 #include <ArduinoOcpp/Core/OcppEngine.h>
 #include <ArduinoOcpp/Core/OcppModel.h>
+#include <ArduinoOcpp/Tasks/Authorization/AuthorizationService.h>
 #include <ArduinoOcpp/Tasks/ChargePointStatus/ChargePointStatusService.h>
 #include <ArduinoOcpp/Debug.h>
 #include <ArduinoOcpp/MessagesV16/StatusNotification.h>
@@ -68,7 +69,13 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         } else {
             AO_DBG_INFO("RFID card denied");
         }
+    } else if (getOcppEngine()->getOcppModel().getAuthorizationService() &&
+                getOcppEngine()->getOcppModel().getAuthorizationService()->getLocalAuthorization(uid.c_str())) {
+            
+            AO_DBG_INFO("RFID tag locally authorized: %s", uid.c_str());
+            connector->beginSession(uid.c_str());
     } else {
+
         authorize(uid.c_str(), [uid, connector] (JsonObject response) {
             if (!strcmp(response["idTagInfo"]["status"] | "", "Accepted")) {
                 AO_DBG_INFO("RFID tag authorized: %s", uid.c_str());
