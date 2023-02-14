@@ -92,6 +92,8 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         } else {
             AO_DBG_INFO("RFID card denied");
         }
+    } else if (isBlockedByReservation(uid.c_str(), connectorId)) {
+        AO_DBG_INFO("connectorId %u blocked by reservation, cannot authorize idTag %s", connectorId, uid.c_str());
     } else if (getOcppEngine()->getOcppModel().getAuthorizationService() &&
                 getOcppEngine()->getOcppModel().getAuthorizationService()->getLocalAuthorization(uid.c_str())) {
             
