@@ -39,6 +39,14 @@ void Evse::setup() {
         const char *errorCode = nullptr; //if error is present, point to error code; any number of error code samplers can be added in this project
         return errorCode;
     });
+
+    setEnergyMeterInput([this] () -> float {
+        return simulate_energy;
+    }, connectorId);
+
+    setPowerMeterInput([this] () -> float {
+        return simulate_power;
+    }, connectorId);
 }
 
 void Evse::loop() {
@@ -49,6 +57,21 @@ void Evse::loop() {
             status = ArduinoOcpp::Ocpp16::cstrFromOcppEveState(curStatus);
         }
     }
+
+
+    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPlugged && trackEvReady;
+
+    if (simulate_isCharging) {
+        if (simulate_power >= 1.f) {
+            simulate_energy += (float) (ao_tick_ms() - simulate_energy_track_time) * SIMULATE_ENERGY_DELTA_MS;
+        }
+
+        simulate_power = SIMULATE_POWER_CONST;
+        simulate_energy_track_time = ao_tick_ms();
+    } else {
+        simulate_power = 0.f;
+    }
+
 }
 
 void Evse::presentNfcTag(const char *uid_cstr) {
