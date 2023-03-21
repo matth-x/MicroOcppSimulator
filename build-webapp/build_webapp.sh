@@ -5,7 +5,7 @@ set -e
 #check relevant installs
 echo "[info] NodeJS and npm need to be installed to build the web-app"
 
-cd ./web-app
+cd ./webapp-src
 
 #fetch most recent version
 git pull
