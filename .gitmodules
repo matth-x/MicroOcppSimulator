@@ -10,3 +10,6 @@
 [submodule "lib/mongoose"]
 	path = lib/mongoose
 	url = https://github.com/cesanta/mongoose
+[submodule "webapp-src"]
+	path = webapp-src
+	url = https://github.com/agruenb/arduino-ocpp-dashboard.git
