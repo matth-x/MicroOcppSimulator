@@ -7,6 +7,7 @@
 #include <ArduinoOcpp/Debug.h>
 #include <ArduinoOcpp/MessagesV16/StatusNotification.h>
 #include <cstring>
+#include <cstdlib>
 
 Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
@@ -35,6 +36,10 @@ void Evse::setup() {
         return trackEvReady; //return if J1772 is in State C
     });
 
+    connector->setConnectorEnergizedSampler([this] () -> bool {
+        return trackEvseReady;
+    });
+
     connector->addConnectorErrorCodeSampler([this] () -> const char* {
         const char *errorCode = nullptr; //if error is present, point to error code; any number of error code samplers can be added in this project
         return errorCode;
@@ -47,6 +52,15 @@ void Evse::setup() {
     setPowerMeterInput([this] () -> float {
         return simulate_power;
     }, connectorId);
+
+    setOnResetExecute([] (bool isHard) {
+        exit(0);
+    });
+
+    setSmartChargingOutput([this] (float limit) {
+        AO_DBG_DEBUG("set limit: %f", limit);
+        this->limit_power = limit;
+    });
 }
 
 void Evse::loop() {
@@ -59,7 +73,7 @@ void Evse::loop() {
     }
 
 
-    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPlugged && trackEvReady;
+    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPlugged && trackEvReady && trackEvseReady;
 
     if (simulate_isCharging) {
         if (simulate_power >= 1.f) {
@@ -67,6 +81,8 @@ void Evse::loop() {
         }
 
         simulate_power = SIMULATE_POWER_CONST;
+        simulate_power = std::min(simulate_power, limit_power);
+        simulate_power += (((ao_tick_ms() / 5000) * 3483947) % 20000) * 0.001f - 10.f;
         simulate_energy_track_time = ao_tick_ms();
     } else {
         simulate_power = 0.f;
@@ -137,4 +153,16 @@ bool Evse::chargingPermitted() {
         return false;
     }
     return connector->ocppPermitsCharge();
+}
+
+int Evse::getPower() {
+    return (int) simulate_power;
+}
+
+float Evse::getVoltage() {
+    if (getPower() > 1.f) {
+        return 228.f + (((ao_tick_ms() / 5000) * 7484311) % 4000) * 0.001f;
+    } else {
+        return 0.f;
+    }
 }
