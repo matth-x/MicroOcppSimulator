@@ -9,6 +9,8 @@
 #include <cstring>
 #include <cstdlib>
 
+#define SIMULATOR_FN AO_FILENAME_PREFIX "/simulator.jsn"
+
 Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
 }
@@ -28,16 +30,25 @@ void Evse::setup() {
         return;
     }
 
+    char key [30] = {'\0'};
+
+    snprintf(key, 30, "evPlugged_cId_%u", connectorId);
+    trackEvPlugged = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN);
+    snprintf(key, 30, "evReady_cId_%u", connectorId);
+    trackEvReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN);
+    snprintf(key, 30, "evseReady_cId_%u", connectorId);
+    trackEvseReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN);
+
     connector->setConnectorPluggedSampler([this] () -> bool {
-        return trackEvPlugged; //return if J1772 is in State B or C
+        return *trackEvPlugged; //return if J1772 is in State B or C
     });
 
     connector->setEvRequestsEnergySampler([this] () -> bool {
-        return trackEvReady; //return if J1772 is in State C
+        return *trackEvReady; //return if J1772 is in State C
     });
 
     connector->setConnectorEnergizedSampler([this] () -> bool {
-        return trackEvseReady;
+        return *trackEvseReady;
     });
 
     connector->addConnectorErrorCodeSampler([this] () -> const char* {
@@ -53,6 +64,33 @@ void Evse::setup() {
         return simulate_power;
     }, connectorId);
 
+    addMeterValueInput([this] () {
+            return (int32_t) getCurrent();
+        }, 
+        "Current.Import",
+        "A",
+        "Outlet",
+        nullptr,
+        connectorId);
+    
+    addMeterValueInput([this] () {
+            return (int32_t) getVoltage();
+        }, 
+        "Voltage",
+        "V",
+        nullptr,
+        nullptr,
+        connectorId);
+    
+    addMeterValueInput([this] () {
+            return (int32_t) (simulate_power > 1.f ? 44.f : 0.f);
+        }, 
+        "SoC",
+        nullptr,
+        nullptr,
+        nullptr,
+        connectorId);
+
     setOnResetExecute([] (bool isHard) {
         exit(0);
     });
@@ -60,7 +98,7 @@ void Evse::setup() {
     setSmartChargingOutput([this] (float limit) {
         AO_DBG_DEBUG("set limit: %f", limit);
         this->limit_power = limit;
-    });
+    }, connectorId);
 }
 
 void Evse::loop() {
@@ -73,11 +111,11 @@ void Evse::loop() {
     }
 
 
-    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPlugged && trackEvReady && trackEvseReady;
+    bool simulate_isCharging = ocppPermitsCharge(connectorId) && *trackEvPlugged && *trackEvReady && *trackEvseReady;
 
     if (simulate_isCharging) {
         if (simulate_power >= 1.f) {
-            simulate_energy += (float) (ao_tick_ms() - simulate_energy_track_time) * SIMULATE_ENERGY_DELTA_MS;
+            simulate_energy += (float) (ao_tick_ms() - simulate_energy_track_time) * simulate_power * (0.001f / 3600.f);
         }
 
         simulate_power = SIMULATE_POWER_CONST;
@@ -113,8 +151,12 @@ void Evse::presentNfcTag(const char *uid_cstr) {
     } else if (getOcppEngine()->getOcppModel().getAuthorizationService() &&
                 getOcppEngine()->getOcppModel().getAuthorizationService()->getLocalAuthorization(uid.c_str())) {
             
-            AO_DBG_INFO("RFID tag locally authorized: %s", uid.c_str());
-            connector->beginSession(uid.c_str());
+            if (getOcppEngine()->getOcppModel().getAuthorizationService()->getLocalAuthorization(uid.c_str())->getAuthorizationStatus() == ArduinoOcpp::AuthorizationStatus::Accepted) {
+                AO_DBG_INFO("RFID tag locally authorized: %s", uid.c_str());
+                connector->beginSession(uid.c_str());
+            } else {
+                AO_DBG_INFO("RFID tag locally rejected: %s", uid.c_str());
+            }
     } else {
 
         authorize(uid.c_str(), [uid, connector] (JsonObject response) {
@@ -126,6 +168,39 @@ void Evse::presentNfcTag(const char *uid_cstr) {
             }
         });
     }
+}
+
+void Evse::setEvPlugged(bool plugged) {
+    if (!trackEvPlugged) return;
+    *trackEvPlugged = plugged;
+    ArduinoOcpp::configuration_save();
+}
+
+bool Evse::getEvPlugged() {
+    if (!trackEvPlugged) return false;
+    return *trackEvPlugged;
+}
+
+void Evse::setEvReady(bool ready) {
+    if (!trackEvReady) return;
+    *trackEvReady = ready;
+    ArduinoOcpp::configuration_save();
+}
+
+bool Evse::getEvReady() {
+    if (!trackEvReady) return false;
+    return *trackEvReady;
+}
+
+void Evse::setEvseReady(bool ready) {
+    if (!trackEvseReady) return;
+    *trackEvseReady = ready;
+    ArduinoOcpp::configuration_save();
+}
+
+bool Evse::getEvseReady() {
+    if (!trackEvseReady) return false;
+    return *trackEvseReady;
 }
 
 const char *Evse::getSessionIdTag() {

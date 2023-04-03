@@ -3,14 +3,16 @@
 
 #include <array>
 #include <string>
+#include <ArduinoOcpp/Core/Configuration.h>
+
 
 class Evse {
 private:
     const unsigned int connectorId;
 
-    bool trackEvPlugged = false;
-    bool trackEvReady = false;
-    bool trackEvseReady = false;
+    std::shared_ptr<ArduinoOcpp::Configuration<bool>> trackEvPlugged;
+    std::shared_ptr<ArduinoOcpp::Configuration<bool>> trackEvReady;
+    std::shared_ptr<ArduinoOcpp::Configuration<bool>> trackEvseReady;
 
     const float SIMULATE_POWER_CONST = 11000.f;
     float simulate_power = 0;
@@ -29,23 +31,17 @@ public:
 
     void presentNfcTag(const char *uid);
 
-    void setEvPlugged(bool plugged) {
-        trackEvPlugged = plugged;
-    }
+    void setEvPlugged(bool plugged);
 
-    bool getEvPlugged() {return trackEvPlugged;}
+    bool getEvPlugged();
 
-    void setEvReady(bool ready) {
-        trackEvReady = ready;
-    }
+    void setEvReady(bool ready);
 
-    bool getEvReady() {return trackEvReady;}
+    bool getEvReady();
 
-    void setEvseReady(bool ready) {
-        trackEvseReady = ready;
-    }
+    void setEvseReady(bool ready);
 
-    bool getEvseReady() {return trackEvseReady;}
+    bool getEvseReady();
 
     const char *getSessionIdTag();
     int getTransactionId();
