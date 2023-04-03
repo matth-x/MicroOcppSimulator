@@ -9,6 +9,8 @@
 static const char *s_http_addr = "http://localhost:8000";  // HTTP port
 static const char *s_root_dir = "web_root";
 
+#define OCPP_CREDENTIALS_FN AO_FILENAME_PREFIX "/ocpp-creds.jsn"
+
 //cors_headers allow the browser to make requests from any domain, allowing all headers and all methods
 #define DEFAULT_HEADER "Content-Type: application/json\r\n"
 #define CORS_HEADERS "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers:Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers\r\nAccess-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT\r\n"
@@ -82,8 +84,8 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             return;
         } else if(mg_http_match_uri(message_data, "/api/websocket")){
             AO_DBG_VERBOSE("query websocket");
-            auto webSocketPingInterval = ArduinoOcpp::declareConfiguration<int>("WebSocketPingInterval", (int) 10, CONFIGURATION_FN);
-            auto reconnectInterval = ArduinoOcpp::declareConfiguration<int>("AO_ReconnectInterval", (int) 30, CONFIGURATION_FN);
+            auto webSocketPingInterval = ArduinoOcpp::declareConfiguration<int>("WebSocketPingInterval", (int) 10, OCPP_CREDENTIALS_FN);
+            auto reconnectInterval = ArduinoOcpp::declareConfiguration<int>("AO_ReconnectInterval", (int) 30, OCPP_CREDENTIALS_FN);
                     
             if (method == Method::POST) {
                 if (auto val = mg_json_get_str(json, "$.backendUrl")) {
