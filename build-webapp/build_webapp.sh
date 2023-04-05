@@ -7,9 +7,6 @@ echo "[info] NodeJS and npm need to be installed to build the web-app"
 
 cd ./webapp-src
 
-#fetch most recent version
-git pull
-
 echo "Building web-app..."
 
 #check .env.production file exists
