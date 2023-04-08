@@ -33,11 +33,11 @@ void Evse::setup() {
     char key [30] = {'\0'};
 
     snprintf(key, 30, "evPlugged_cId_%u", connectorId);
-    trackEvPlugged = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN);
+    trackEvPlugged = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
     snprintf(key, 30, "evReady_cId_%u", connectorId);
-    trackEvReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN);
+    trackEvReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
     snprintf(key, 30, "evseReady_cId_%u", connectorId);
-    trackEvseReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN);
+    trackEvseReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
 
     connector->setConnectorPluggedSampler([this] () -> bool {
         return *trackEvPlugged; //return if J1772 is in State B or C
