@@ -4,6 +4,7 @@
 #include <ArduinoOcpp/Core/OcppModel.h>
 #include <ArduinoOcpp/Tasks/Authorization/AuthorizationService.h>
 #include <ArduinoOcpp/Tasks/ChargePointStatus/ChargePointStatusService.h>
+#include <ArduinoOcpp/Tasks/Transactions/Transaction.h>
 #include <ArduinoOcpp/Debug.h>
 #include <ArduinoOcpp/MessagesV16/StatusNotification.h>
 #include <cstring>
@@ -140,33 +141,14 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         return;
     }
 
-    if (connector->getSessionIdTag()) {
-        if (!uid.compare(connector->getSessionIdTag())) {
-            connector->endSession("Local");
+    if (connector->getTransaction() && connector->getTransaction()->isActive()) {
+        if (!uid.compare(connector->getTransaction()->getIdTag())) {
+            connector->endTransaction("Local");
         } else {
             AO_DBG_INFO("RFID card denied");
         }
-    } else if (isBlockedByReservation(uid.c_str(), connectorId)) {
-        AO_DBG_INFO("connectorId %u blocked by reservation, cannot authorize idTag %s", connectorId, uid.c_str());
-    } else if (getOcppEngine()->getOcppModel().getAuthorizationService() &&
-                getOcppEngine()->getOcppModel().getAuthorizationService()->getLocalAuthorization(uid.c_str())) {
-            
-            if (getOcppEngine()->getOcppModel().getAuthorizationService()->getLocalAuthorization(uid.c_str())->getAuthorizationStatus() == ArduinoOcpp::AuthorizationStatus::Accepted) {
-                AO_DBG_INFO("RFID tag locally authorized: %s", uid.c_str());
-                connector->beginSession(uid.c_str());
-            } else {
-                AO_DBG_INFO("RFID tag locally rejected: %s", uid.c_str());
-            }
     } else {
-
-        authorize(uid.c_str(), [uid, connector] (JsonObject response) {
-            if (!strcmp(response["idTagInfo"]["status"] | "", "Accepted")) {
-                AO_DBG_INFO("RFID tag authorized: %s", uid.c_str());
-                connector->beginSession(uid.c_str());
-            } else {
-                AO_DBG_INFO("RFID card denied for reason %s", response["idTagInfo"]["status"] | "undefined");
-            }
-        });
+        connector->beginTransaction(uid.c_str());
     }
 }
 

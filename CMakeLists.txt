@@ -27,6 +27,9 @@ target_include_directories(ao_simulator PUBLIC
 add_compile_definitions(
     MG_ENABLE_OPENSSL=1
     AO_NUMCONNECTORS=3
+    AO_TRAFFIC_OUT
+    AO_DBG_LEVEL=AO_DL_INFO
+    AO_FILENAME_PREFIX="./ao_store"
     )
 
 add_subdirectory(lib/ArduinoOcpp)
