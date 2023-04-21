@@ -34,7 +34,7 @@ Navigate to the copy of the Simulator, prepare some necessary local folders and 
 cd ArduinoOcppSimulator
 mkdir build
 mkdir ao_store
-cmake . ./build
+cmake -S . -B ./build
 cmake --build ./build -j 16
 ```
 

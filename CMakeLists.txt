@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.13)
 
 set(AO_SM_SRC
     src/evse.cpp
-    src/main
+    src/main.cpp
     src/webserver.cpp
     lib/mongoose/mongoose.c
 )
