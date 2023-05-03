@@ -42,4 +42,5 @@ target_link_libraries(ao_simulator PUBLIC ssl crypto)
 
 if(WIN32)
   target_link_libraries(ao_simulator PUBLIC wsock32 ws2_32)
+  set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
 endif()
