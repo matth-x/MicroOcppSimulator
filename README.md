@@ -1,6 +1,6 @@
 # <img src="https://user-images.githubusercontent.com/63792403/133922028-fefc8abb-fde9-460b-826f-09a458502d17.png" alt="Icon" height="24"> &nbsp; ArduinoOcppSimulator
 
-Tester / Demo App for the [ArduinoOcpp](https://github.com/matth-x/ArduinoOcpp) Client, running on native Ubuntu or the WSL.
+Tester / Demo App for the [ArduinoOcpp](https://github.com/matth-x/ArduinoOcpp) Client, running on native Ubuntu, WSL, or MSYS2.
 
 ![Screenshot](https://github.com/agruenb/arduino-ocpp-dashboard/blob/master/docs/img/status_page.png)
 
@@ -12,7 +12,7 @@ That means that the Simulator runs on your computer and connects to an OCPP serv
 
 ## Installation
 
-On Windows, get the Windows Subsystem for Linux (WSL): [https://ubuntu.com/wsl](https://ubuntu.com/wsl)
+On Windows, get the Windows Subsystem for Linux (WSL): [https://ubuntu.com/wsl](https://ubuntu.com/wsl) or [MSYS2](https://www.msys2.org/).
 
 Then follow the same steps like for Ubuntu.
 
