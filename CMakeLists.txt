@@ -29,7 +29,7 @@ add_compile_definitions(
     AO_NUMCONNECTORS=3
     AO_TRAFFIC_OUT
     AO_DBG_LEVEL=AO_DL_INFO
-    AO_FILENAME_PREFIX="./ao_store"
+    AO_FILENAME_PREFIX="./ao_store/"
     )
 
 add_subdirectory(lib/ArduinoOcpp)

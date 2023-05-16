@@ -9,7 +9,7 @@
 static const char *s_http_addr = "http://localhost:8000";  // HTTP port
 static const char *s_root_dir = "web_root";
 
-#define OCPP_CREDENTIALS_FN AO_FILENAME_PREFIX "/ocpp-creds.jsn"
+#define OCPP_CREDENTIALS_FN AO_FILENAME_PREFIX "ocpp-creds.jsn"
 
 //cors_headers allow the browser to make requests from any domain, allowing all headers and all methods
 #define DEFAULT_HEADER "Content-Type: application/json\r\n"
