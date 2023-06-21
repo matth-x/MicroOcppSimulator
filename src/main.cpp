@@ -8,11 +8,9 @@
 #include <ArduinoOcpp/Core/Configuration.h>
 #include <ArduinoOcpp/Core/FilesystemAdapter.h>
 #include <ArduinoOcpp/Platform.h>
-#include <ArduinoOcpp/Core/OcppEngine.h>
-#include <ArduinoOcpp/Core/OcppModel.h>
-#include <ArduinoOcpp/Core/OcppTime.h>
-
-#define OCPP_CREDENTIALS_FN (AO_FILENAME_PREFIX "/ocpp-creds.jsn")
+#include <ArduinoOcpp/Context.h>
+#include <ArduinoOcpp/Model/Model.h>
+#include <ArduinoOcpp/Core/Time.h>
 
 struct mg_mgr mgr;
 ArduinoOcpp::AOcppMongooseClient *osock;

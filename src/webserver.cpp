@@ -127,6 +127,10 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             return;
         } else if(mg_http_match_uri(message_data, "/api/connector/*/evse")){
             AO_DBG_VERBOSE("query evse");
+            if (!evse) {
+                mg_http_reply(c, 404, final_headers, "connector does not exist");
+                return;
+            }
             if (method == Method::POST) {
                 bool val = false;
                 if (mg_json_get_bool(json, "$.evPlugged", &val)) {
@@ -150,6 +154,10 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             return;
         } else if(mg_http_match_uri(message_data, "/api/connector/*/meter")){
             AO_DBG_VERBOSE("query meter");
+            if (!evse) {
+                mg_http_reply(c, 404, final_headers, "connector does not exist");
+                return;
+            }
             StaticJsonDocument<256> doc;
             doc["energy"] = evse->getEnergy();
             doc["power"] = evse->getPower();
@@ -162,6 +170,10 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
         } else if(mg_http_match_uri(message_data, "/api/connector/*/transaction")){
             AO_DBG_VERBOSE("query transaction");
+            if (!evse) {
+                mg_http_reply(c, 404, final_headers, "connector does not exist");
+                return;
+            }
             if (method == Method::POST) {
                 if (auto val = mg_json_get_str(json, "$.idTag")) {
                     evse->presentNfcTag(val);
@@ -177,6 +189,10 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             return;
         } else if(mg_http_match_uri(message_data, "/api/connector/*/smartcharging")){
             AO_DBG_VERBOSE("query smartcharging");
+            if (!evse) {
+                mg_http_reply(c, 404, final_headers, "connector does not exist");
+                return;
+            }
             StaticJsonDocument<256> doc;
             doc["maxPower"] = evse->getSmartChargingMaxPower();
             doc["maxCurrent"] = evse->getSmartChargingMaxCurrent();

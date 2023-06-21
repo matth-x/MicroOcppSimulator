@@ -35,7 +35,7 @@ cd ArduinoOcppSimulator
 mkdir build
 mkdir ao_store
 cmake -S . -B ./build
-cmake --build ./build -j 16
+cmake --build ./build -j 16 --target ao_simulator
 ```
 
 The installation is complete! To run the Simulator, type:

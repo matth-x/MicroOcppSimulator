@@ -1,27 +1,25 @@
 #include "evse.h"
 #include <ArduinoOcpp.h>
-#include <ArduinoOcpp/Core/OcppEngine.h>
-#include <ArduinoOcpp/Core/OcppModel.h>
-#include <ArduinoOcpp/Tasks/Authorization/AuthorizationService.h>
-#include <ArduinoOcpp/Tasks/ChargePointStatus/ChargePointStatusService.h>
-#include <ArduinoOcpp/Tasks/Transactions/Transaction.h>
+#include <ArduinoOcpp/Context.h>
+#include <ArduinoOcpp/Model/Model.h>
+#include <ArduinoOcpp/Model/Transactions/Transaction.h>
+#include <ArduinoOcpp/Operations/StatusNotification.h>
 #include <ArduinoOcpp/Debug.h>
-#include <ArduinoOcpp/MessagesV16/StatusNotification.h>
 #include <cstring>
 #include <cstdlib>
 
-#define SIMULATOR_FN AO_FILENAME_PREFIX "/simulator.jsn"
+#define SIMULATOR_FN AO_FILENAME_PREFIX "simulator.jsn"
 
 Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
 }
 
-ArduinoOcpp::ConnectorStatus *getConnector(unsigned int connectorId) {
-    if (!getOcppEngine()) {
+ArduinoOcpp::Connector *getConnector(unsigned int connectorId) {
+    if (!getOcppContext()) {
         AO_DBG_ERR("unitialized");
         return nullptr;
     }
-    return getOcppEngine()->getOcppModel().getConnectorStatus(connectorId);
+    return getOcppContext()->getModel().getConnector(connectorId);
 }
 
 void Evse::setup() {
@@ -96,7 +94,7 @@ void Evse::setup() {
         exit(0);
     });
 
-    setSmartChargingOutput([this] (float limit) {
+    setSmartChargingPowerOutput([this] (float limit) {
         AO_DBG_DEBUG("set limit: %f", limit);
         this->limit_power = limit;
     }, connectorId);
@@ -135,7 +133,7 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         return;
     }
     std::string uid = uid_cstr;
-    auto connector = getOcppEngine()->getOcppModel().getConnectorStatus(connectorId);
+    auto connector = getConnector(connectorId);
     if (!connector) {
         AO_DBG_ERR("invalid state");
         return;
