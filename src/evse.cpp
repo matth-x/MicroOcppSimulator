@@ -102,7 +102,7 @@ void Evse::setup() {
 
 void Evse::loop() {
     if (auto connector = getConnector(connectorId)) {
-        auto curStatus = connector->inferenceStatus();
+        auto curStatus = connector->getStatus();
 
         if (status.compare(ArduinoOcpp::Ocpp16::cstrFromOcppEveState(curStatus))) {
             status = ArduinoOcpp::Ocpp16::cstrFromOcppEveState(curStatus);
@@ -189,7 +189,7 @@ const char *Evse::getSessionIdTag() {
         AO_DBG_ERR("invalid state");
         return nullptr;
     }
-    return connector->getSessionIdTag();
+    return connector->getTransaction() ? connector->getTransaction()->getIdTag() : nullptr;
 }
 
 int Evse::getTransactionId() {
@@ -198,7 +198,7 @@ int Evse::getTransactionId() {
         AO_DBG_ERR("invalid state");
         return -1;
     }
-    return connector->getTransactionId();
+    return connector->getTransaction() ? connector->getTransaction()->getTransactionId() : -1;
 }
 
 bool Evse::chargingPermitted() {

@@ -44,7 +44,6 @@ int main() {
     server_initialize(osock);
     OCPP_initialize(*osock,
             ChargerCredentials("Demo Charger", "My Company Ltd."),
-            230.f, /* European grid voltage */
             ArduinoOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
 
     for (unsigned int i = 0; i < connectors.size(); i++) {
