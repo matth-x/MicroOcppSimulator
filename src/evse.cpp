@@ -1,6 +1,6 @@
 #include "evse.h"
 #include <ArduinoOcpp.h>
-#include <ArduinoOcpp/Context.h>
+#include <ArduinoOcpp/Core/Context.h>
 #include <ArduinoOcpp/Model/Model.h>
 #include <ArduinoOcpp/Model/Transactions/Transaction.h>
 #include <ArduinoOcpp/Operations/StatusNotification.h>
@@ -38,19 +38,19 @@ void Evse::setup() {
     snprintf(key, 30, "evseReady_cId_%u", connectorId);
     trackEvseReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
 
-    connector->setConnectorPluggedSampler([this] () -> bool {
+    connector->setConnectorPluggedInput([this] () -> bool {
         return *trackEvPlugged; //return if J1772 is in State B or C
     });
 
-    connector->setEvRequestsEnergySampler([this] () -> bool {
+    connector->setEvReadyInput([this] () -> bool {
         return *trackEvReady; //return if J1772 is in State C
     });
 
-    connector->setConnectorEnergizedSampler([this] () -> bool {
+    connector->setEvseReadyInput([this] () -> bool {
         return *trackEvseReady;
     });
 
-    connector->addConnectorErrorCodeSampler([this] () -> const char* {
+    connector->addErrorCodeInput([this] () -> const char* {
         const char *errorCode = nullptr; //if error is present, point to error code; any number of error code samplers can be added in this project
         return errorCode;
     });
@@ -141,7 +141,7 @@ void Evse::presentNfcTag(const char *uid_cstr) {
 
     if (connector->getTransaction() && connector->getTransaction()->isActive()) {
         if (!uid.compare(connector->getTransaction()->getIdTag())) {
-            connector->endTransaction("Local");
+            connector->endTransaction(uid.c_str());
         } else {
             AO_DBG_INFO("RFID card denied");
         }

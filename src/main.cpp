@@ -8,7 +8,7 @@
 #include <ArduinoOcpp/Core/Configuration.h>
 #include <ArduinoOcpp/Core/FilesystemAdapter.h>
 #include <ArduinoOcpp/Platform.h>
-#include <ArduinoOcpp/Context.h>
+#include <ArduinoOcpp/Core/Context.h>
 #include <ArduinoOcpp/Model/Model.h>
 #include <ArduinoOcpp/Core/Time.h>
 
@@ -42,7 +42,7 @@ int main() {
         filesystem);
     
     server_initialize(osock);
-    OCPP_initialize(*osock,
+    ocpp_initialize(*osock,
             ChargerCredentials("Demo Charger", "My Company Ltd."),
             ArduinoOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
 
@@ -52,7 +52,7 @@ int main() {
 
     for (;;) {                    // Block forever
         mg_mgr_poll(&mgr, 100);
-        OCPP_loop();
+        ocpp_loop();
         for (unsigned int i = 0; i < connectors.size(); i++) {
             connectors[i].loop();
         }
