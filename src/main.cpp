@@ -1,16 +1,11 @@
-#include "mongoose.h"
-#include "webserver.h"
-#include <ArduinoOcppMongooseClient.h>
-#include "evse.h"
 #include <iostream>
-
+#include "mongoose.h"
 #include <ArduinoOcpp.h>
-#include <ArduinoOcpp/Core/Configuration.h>
-#include <ArduinoOcpp/Core/FilesystemAdapter.h>
-#include <ArduinoOcpp/Platform.h>
-#include <ArduinoOcpp/Core/Context.h>
-#include <ArduinoOcpp/Model/Model.h>
-#include <ArduinoOcpp/Core/Time.h>
+#include <ArduinoOcppMongooseClient.h>
+
+#include "evse.h"
+#include "webserver.h"
+
 
 struct mg_mgr mgr;
 ArduinoOcpp::AOcppMongooseClient *osock;
@@ -24,15 +19,10 @@ std::array<Evse, AO_NUMCONNECTORS - 1> connectors {{1}};
 int main() {
     mg_log_set(MG_LL_INFO);                            
     mg_mgr_init(&mgr);
-    
+
     mg_http_listen(&mgr, "0.0.0.0:8000", http_serve, NULL);     // Create listening connection
 
-    std::shared_ptr<ArduinoOcpp::FilesystemAdapter> filesystem;
-
-#ifndef AO_DEACTIVATE_FLASH
-    filesystem = 
-        ArduinoOcpp::makeDefaultFilesystemAdapter(ArduinoOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
-#endif
+    auto filesystem = ArduinoOcpp::makeDefaultFilesystemAdapter(ArduinoOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
 
     osock = new ArduinoOcpp::AOcppMongooseClient(&mgr,
         "ws://echo.websocket.events",
@@ -44,7 +34,7 @@ int main() {
     server_initialize(osock);
     ocpp_initialize(*osock,
             ChargerCredentials("Demo Charger", "My Company Ltd."),
-            ArduinoOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
+            filesystem);
 
     for (unsigned int i = 0; i < connectors.size(); i++) {
         connectors[i].setup();
