@@ -1,5 +1,7 @@
 # <img src="https://user-images.githubusercontent.com/63792403/133922028-fefc8abb-fde9-460b-826f-09a458502d17.png" alt="Icon" height="24"> &nbsp; MicroOcppSimulator
 
+**Formerly ArduinoOcppSimulator**: *see the statement on the former ArduinoOcpp [project site](https://github.com/matth-x/MicroOcpp) for more details.*
+
 Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu or the WSL.
 
 ![Screenshot](https://github.com/agruenb/arduino-ocpp-dashboard/blob/master/docs/img/status_page.png)
