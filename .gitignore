@@ -2,5 +2,5 @@
 *.exe
 *.obj
 build_and_run.sh
-ao_store
+mo_store
 build

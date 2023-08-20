@@ -1,22 +1,22 @@
 #include "evse.h"
-#include <ArduinoOcpp.h>
-#include <ArduinoOcpp/Core/Context.h>
-#include <ArduinoOcpp/Model/Model.h>
-#include <ArduinoOcpp/Model/Transactions/Transaction.h>
-#include <ArduinoOcpp/Operations/StatusNotification.h>
-#include <ArduinoOcpp/Debug.h>
+#include <MicroOcpp.h>
+#include <MicroOcpp/Core/Context.h>
+#include <MicroOcpp/Model/Model.h>
+#include <MicroOcpp/Model/Transactions/Transaction.h>
+#include <MicroOcpp/Operations/StatusNotification.h>
+#include <MicroOcpp/Debug.h>
 #include <cstring>
 #include <cstdlib>
 
-#define SIMULATOR_FN AO_FILENAME_PREFIX "simulator.jsn"
+#define SIMULATOR_FN MOCPP_FILENAME_PREFIX "simulator.jsn"
 
 Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
 }
 
-ArduinoOcpp::Connector *getConnector(unsigned int connectorId) {
+MicroOcpp::Connector *getConnector(unsigned int connectorId) {
     if (!getOcppContext()) {
-        AO_DBG_ERR("unitialized");
+        MOCPP_DBG_ERR("unitialized");
         return nullptr;
     }
     return getOcppContext()->getModel().getConnector(connectorId);
@@ -25,18 +25,18 @@ ArduinoOcpp::Connector *getConnector(unsigned int connectorId) {
 void Evse::setup() {
     auto connector = getConnector(connectorId);
     if (!connector) {
-        AO_DBG_ERR("invalid state");
+        MOCPP_DBG_ERR("invalid state");
         return;
     }
 
     char key [30] = {'\0'};
 
     snprintf(key, 30, "evPlugged_cId_%u", connectorId);
-    trackEvPlugged = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
+    trackEvPlugged = MicroOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
     snprintf(key, 30, "evReady_cId_%u", connectorId);
-    trackEvReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
+    trackEvReady = MicroOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
     snprintf(key, 30, "evseReady_cId_%u", connectorId);
-    trackEvseReady = ArduinoOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
+    trackEvseReady = MicroOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
 
     connector->setConnectorPluggedInput([this] () -> bool {
         return *trackEvPlugged; //return if J1772 is in State B or C
@@ -95,7 +95,7 @@ void Evse::setup() {
     });
 
     setSmartChargingPowerOutput([this] (float limit) {
-        AO_DBG_DEBUG("set limit: %f", limit);
+        MOCPP_DBG_DEBUG("set limit: %f", limit);
         this->limit_power = limit;
     }, connectorId);
 }
@@ -104,8 +104,8 @@ void Evse::loop() {
     if (auto connector = getConnector(connectorId)) {
         auto curStatus = connector->getStatus();
 
-        if (status.compare(ArduinoOcpp::Ocpp16::cstrFromOcppEveState(curStatus))) {
-            status = ArduinoOcpp::Ocpp16::cstrFromOcppEveState(curStatus);
+        if (status.compare(MicroOcpp::Ocpp16::cstrFromOcppEveState(curStatus))) {
+            status = MicroOcpp::Ocpp16::cstrFromOcppEveState(curStatus);
         }
     }
 
@@ -114,13 +114,13 @@ void Evse::loop() {
 
     if (simulate_isCharging) {
         if (simulate_power >= 1.f) {
-            simulate_energy += (float) (ao_tick_ms() - simulate_energy_track_time) * simulate_power * (0.001f / 3600.f);
+            simulate_energy += (float) (mocpp_tick_ms() - simulate_energy_track_time) * simulate_power * (0.001f / 3600.f);
         }
 
         simulate_power = SIMULATE_POWER_CONST;
         simulate_power = std::min(simulate_power, limit_power);
-        simulate_power += (((ao_tick_ms() / 5000) * 3483947) % 20000) * 0.001f - 10.f;
-        simulate_energy_track_time = ao_tick_ms();
+        simulate_power += (((mocpp_tick_ms() / 5000) * 3483947) % 20000) * 0.001f - 10.f;
+        simulate_energy_track_time = mocpp_tick_ms();
     } else {
         simulate_power = 0.f;
     }
@@ -129,13 +129,13 @@ void Evse::loop() {
 
 void Evse::presentNfcTag(const char *uid_cstr) {
     if (!uid_cstr) {
-        AO_DBG_ERR("invalid argument");
+        MOCPP_DBG_ERR("invalid argument");
         return;
     }
     std::string uid = uid_cstr;
     auto connector = getConnector(connectorId);
     if (!connector) {
-        AO_DBG_ERR("invalid state");
+        MOCPP_DBG_ERR("invalid state");
         return;
     }
 
@@ -143,7 +143,7 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         if (!uid.compare(connector->getTransaction()->getIdTag())) {
             connector->endTransaction(uid.c_str());
         } else {
-            AO_DBG_INFO("RFID card denied");
+            MOCPP_DBG_INFO("RFID card denied");
         }
     } else {
         connector->beginTransaction(uid.c_str());
@@ -153,7 +153,7 @@ void Evse::presentNfcTag(const char *uid_cstr) {
 void Evse::setEvPlugged(bool plugged) {
     if (!trackEvPlugged) return;
     *trackEvPlugged = plugged;
-    ArduinoOcpp::configuration_save();
+    MicroOcpp::configuration_save();
 }
 
 bool Evse::getEvPlugged() {
@@ -164,7 +164,7 @@ bool Evse::getEvPlugged() {
 void Evse::setEvReady(bool ready) {
     if (!trackEvReady) return;
     *trackEvReady = ready;
-    ArduinoOcpp::configuration_save();
+    MicroOcpp::configuration_save();
 }
 
 bool Evse::getEvReady() {
@@ -175,7 +175,7 @@ bool Evse::getEvReady() {
 void Evse::setEvseReady(bool ready) {
     if (!trackEvseReady) return;
     *trackEvseReady = ready;
-    ArduinoOcpp::configuration_save();
+    MicroOcpp::configuration_save();
 }
 
 bool Evse::getEvseReady() {
@@ -186,7 +186,7 @@ bool Evse::getEvseReady() {
 const char *Evse::getSessionIdTag() {
     auto connector = getConnector(connectorId);
     if (!connector) {
-        AO_DBG_ERR("invalid state");
+        MOCPP_DBG_ERR("invalid state");
         return nullptr;
     }
     return connector->getTransaction() ? connector->getTransaction()->getIdTag() : nullptr;
@@ -195,7 +195,7 @@ const char *Evse::getSessionIdTag() {
 int Evse::getTransactionId() {
     auto connector = getConnector(connectorId);
     if (!connector) {
-        AO_DBG_ERR("invalid state");
+        MOCPP_DBG_ERR("invalid state");
         return -1;
     }
     return connector->getTransaction() ? connector->getTransaction()->getTransactionId() : -1;
@@ -204,7 +204,7 @@ int Evse::getTransactionId() {
 bool Evse::chargingPermitted() {
     auto connector = getConnector(connectorId);
     if (!connector) {
-        AO_DBG_ERR("invalid state");
+        MOCPP_DBG_ERR("invalid state");
         return false;
     }
     return connector->ocppPermitsCharge();
@@ -216,7 +216,7 @@ int Evse::getPower() {
 
 float Evse::getVoltage() {
     if (getPower() > 1.f) {
-        return 228.f + (((ao_tick_ms() / 5000) * 7484311) % 4000) * 0.001f;
+        return 228.f + (((mocpp_tick_ms() / 5000) * 7484311) % 4000) * 0.001f;
     } else {
         return 0.f;
     }

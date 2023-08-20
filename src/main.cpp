@@ -1,19 +1,19 @@
 #include <iostream>
 #include "mongoose.h"
-#include <ArduinoOcpp.h>
-#include <ArduinoOcppMongooseClient.h>
+#include <MicroOcpp.h>
+#include <MicroOcppMongooseClient.h>
 
 #include "evse.h"
 #include "webserver.h"
 
 
 struct mg_mgr mgr;
-ArduinoOcpp::AOcppMongooseClient *osock;
+MicroOcpp::MOcppMongooseClient *osock;
 
-#if AO_NUMCONNECTORS == 3
-std::array<Evse, AO_NUMCONNECTORS - 1> connectors {{1,2}};
+#if MOCPP_NUMCONNECTORS == 3
+std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors {{1,2}};
 #else
-std::array<Evse, AO_NUMCONNECTORS - 1> connectors {{1}};
+std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors {{1}};
 #endif
 
 int main() {
@@ -22,9 +22,9 @@ int main() {
 
     mg_http_listen(&mgr, "0.0.0.0:8000", http_serve, NULL);     // Create listening connection
 
-    auto filesystem = ArduinoOcpp::makeDefaultFilesystemAdapter(ArduinoOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
+    auto filesystem = MicroOcpp::makeDefaultFilesystemAdapter(MicroOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
 
-    osock = new ArduinoOcpp::AOcppMongooseClient(&mgr,
+    osock = new MicroOcpp::MOcppMongooseClient(&mgr,
         "ws://echo.websocket.events",
         "charger-01",
         "",
@@ -32,7 +32,7 @@ int main() {
         filesystem);
     
     server_initialize(osock);
-    ocpp_initialize(*osock,
+    mocpp_initialize(*osock,
             ChargerCredentials("Demo Charger", "My Company Ltd."),
             filesystem);
 
@@ -42,7 +42,7 @@ int main() {
 
     for (;;) {                    // Block forever
         mg_mgr_poll(&mgr, 100);
-        ocpp_loop();
+        mocpp_loop();
         for (unsigned int i = 0; i < connectors.size(); i++) {
             connectors[i].loop();
         }

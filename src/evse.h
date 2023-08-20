@@ -3,16 +3,16 @@
 
 #include <array>
 #include <string>
-#include <ArduinoOcpp/Core/Configuration.h>
+#include <MicroOcpp/Core/Configuration.h>
 
 
 class Evse {
 private:
     const unsigned int connectorId;
 
-    std::shared_ptr<ArduinoOcpp::Configuration<bool>> trackEvPlugged;
-    std::shared_ptr<ArduinoOcpp::Configuration<bool>> trackEvReady;
-    std::shared_ptr<ArduinoOcpp::Configuration<bool>> trackEvseReady;
+    std::shared_ptr<MicroOcpp::Configuration<bool>> trackEvPlugged;
+    std::shared_ptr<MicroOcpp::Configuration<bool>> trackEvReady;
+    std::shared_ptr<MicroOcpp::Configuration<bool>> trackEvseReady;
 
     const float SIMULATE_POWER_CONST = 11000.f;
     float simulate_power = 0;
@@ -89,6 +89,6 @@ public:
 
 };
 
-extern std::array<Evse, AO_NUMCONNECTORS - 1> connectors;
+extern std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors;
 
 #endif

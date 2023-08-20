@@ -1,23 +1,23 @@
 #include "webserver.h"
 #include "evse.h"
-#include <ArduinoOcppMongooseClient.h>
+#include <MicroOcppMongooseClient.h>
 #include <string>
 #include <ArduinoJson.h>
-#include <ArduinoOcpp/Debug.h>
-#include <ArduinoOcpp/Core/Configuration.h>
+#include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Core/Configuration.h>
 
 static const char *s_http_addr = "http://localhost:8000";  // HTTP port
 static const char *s_root_dir = "web_root";
 
-#define OCPP_CREDENTIALS_FN AO_FILENAME_PREFIX "ocpp-creds.jsn"
+#define OCPP_CREDENTIALS_FN MOCPP_FILENAME_PREFIX "ws-conn.jsn"
 
 //cors_headers allow the browser to make requests from any domain, allowing all headers and all methods
 #define DEFAULT_HEADER "Content-Type: application/json\r\n"
 #define CORS_HEADERS "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers:Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers\r\nAccess-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT\r\n"
 
-ArduinoOcpp::AOcppMongooseClient *ao_sock = nullptr;
+MicroOcpp::MOcppMongooseClient *ao_sock = nullptr;
 
-void server_initialize(ArduinoOcpp::AOcppMongooseClient *osock) {
+void server_initialize(MicroOcpp::MOcppMongooseClient *osock) {
   ao_sock = osock;
 }
 
@@ -40,16 +40,16 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         const char *final_headers = DEFAULT_HEADER CORS_HEADERS;
         struct mg_str json = message_data->body;
 
-        AO_DBG_VERBOSE("%.*s", 20, message_data->uri.ptr);
+        MOCPP_DBG_VERBOSE("%.*s", 20, message_data->uri.ptr);
 
         Method method = Method::UNDEFINED;
 
         if (!mg_vcasecmp(&message_data->method, "POST")) {
             method = Method::POST;
-            AO_DBG_VERBOSE("POST");
+            MOCPP_DBG_VERBOSE("POST");
         } else if (!mg_vcasecmp(&message_data->method, "GET")) {
             method = Method::GET;
-            AO_DBG_VERBOSE("GET");
+            MOCPP_DBG_VERBOSE("GET");
         }
 
         unsigned int connectorId = 0;
@@ -65,16 +65,16 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             }
         }
 
-        AO_DBG_VERBOSE("connectorId = %u", connectorId);
+        MOCPP_DBG_VERBOSE("connectorId = %u", connectorId);
 
         Evse *evse = nullptr;
-        if (connectorId >= 1 && connectorId < AO_NUMCONNECTORS) {
+        if (connectorId >= 1 && connectorId < MOCPP_NUMCONNECTORS) {
             evse = &connectors[connectorId-1];
         }
 
         //start different api endpoints
         if(mg_http_match_uri(message_data, "/api/connectors")) {
-            AO_DBG_VERBOSE("query connectors");
+            MOCPP_DBG_VERBOSE("query connectors");
             StaticJsonDocument<256> doc;
             doc.add("1");
             doc.add("2");
@@ -83,9 +83,9 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             mg_http_reply(c, 200, final_headers, serialized.c_str());
             return;
         } else if(mg_http_match_uri(message_data, "/api/websocket")){
-            AO_DBG_VERBOSE("query websocket");
-            auto webSocketPingInterval = ArduinoOcpp::declareConfiguration<int>("WebSocketPingInterval", (int) 10, OCPP_CREDENTIALS_FN);
-            auto reconnectInterval = ArduinoOcpp::declareConfiguration<int>("AO_ReconnectInterval", (int) 30, OCPP_CREDENTIALS_FN);
+            MOCPP_DBG_VERBOSE("query websocket");
+            auto webSocketPingInterval = MicroOcpp::declareConfiguration<int>("WebSocketPingInterval", (int) 10, OCPP_CREDENTIALS_FN);
+            auto reconnectInterval = MicroOcpp::declareConfiguration<int>("MOCPP_ReconnectInterval", (int) 30, OCPP_CREDENTIALS_FN);
                     
             if (method == Method::POST) {
                 if (auto val = mg_json_get_str(json, "$.backendUrl")) {
@@ -110,10 +110,10 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                     }
                 }
                 if (auto val = mg_json_get_str(json, "$.dnsUrl")) {
-                    AO_DBG_WARN("dnsUrl not implemented");
+                    MOCPP_DBG_WARN("dnsUrl not implemented");
                     (void)val;
                 }
-                ArduinoOcpp::configuration_save();
+                MicroOcpp::configuration_save();
             }
             StaticJsonDocument<256> doc;
             doc["backendUrl"] = ao_sock->getBackendUrl();
@@ -126,7 +126,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             mg_http_reply(c, 200, final_headers, serialized.c_str());
             return;
         } else if(mg_http_match_uri(message_data, "/api/connector/*/evse")){
-            AO_DBG_VERBOSE("query evse");
+            MOCPP_DBG_VERBOSE("query evse");
             if (!evse) {
                 mg_http_reply(c, 404, final_headers, "connector does not exist");
                 return;
@@ -153,7 +153,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             mg_http_reply(c, 200, final_headers, serialized.c_str());
             return;
         } else if(mg_http_match_uri(message_data, "/api/connector/*/meter")){
-            AO_DBG_VERBOSE("query meter");
+            MOCPP_DBG_VERBOSE("query meter");
             if (!evse) {
                 mg_http_reply(c, 404, final_headers, "connector does not exist");
                 return;
@@ -169,7 +169,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             return;
 
         } else if(mg_http_match_uri(message_data, "/api/connector/*/transaction")){
-            AO_DBG_VERBOSE("query transaction");
+            MOCPP_DBG_VERBOSE("query transaction");
             if (!evse) {
                 mg_http_reply(c, 404, final_headers, "connector does not exist");
                 return;
@@ -188,7 +188,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             mg_http_reply(c, 200, final_headers, serialized.c_str());
             return;
         } else if(mg_http_match_uri(message_data, "/api/connector/*/smartcharging")){
-            AO_DBG_VERBOSE("query smartcharging");
+            MOCPP_DBG_VERBOSE("query smartcharging");
             if (!evse) {
                 mg_http_reply(c, 404, final_headers, "connector does not exist");
                 return;

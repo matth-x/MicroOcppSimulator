@@ -1,12 +1,12 @@
-# <img src="https://user-images.githubusercontent.com/63792403/133922028-fefc8abb-fde9-460b-826f-09a458502d17.png" alt="Icon" height="24"> &nbsp; ArduinoOcppSimulator
+# <img src="https://user-images.githubusercontent.com/63792403/133922028-fefc8abb-fde9-460b-826f-09a458502d17.png" alt="Icon" height="24"> &nbsp; MicroOcppSimulator
 
-Tester / Demo App for the [ArduinoOcpp](https://github.com/matth-x/ArduinoOcpp) Client, running on native Ubuntu or the WSL.
+Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu or the WSL.
 
 ![Screenshot](https://github.com/agruenb/arduino-ocpp-dashboard/blob/master/docs/img/status_page.png)
 
 The Simulator has two purposes:
-- As a development tool, it allows to run ArduinoOcpp directly on the host computer and simplifies the development (no flashing of the microcontroller required)
-- As a demonstration tool, it allows backend operators to test and use ArduinoOcpp without the need to set up an actual microcontroller or to buy an actual charger with ArduinoOcpp.
+- As a development tool, it allows to run MicroOcpp directly on the host computer and simplifies the development (no flashing of the microcontroller required)
+- As a demonstration tool, it allows backend operators to test and use MicroOcpp without the need to set up an actual microcontroller or to buy an actual charger with MicroOcpp.
 
 That means that the Simulator runs on your computer and connects to an OCPP server using the same software like a microcontroller. It provides a Graphical User Interface to show the connection status and to trigger simulated charging sessions (and further simulated actions).
 
@@ -25,23 +25,23 @@ sudo apt install cmake libssl-dev build-essential
 Navigate to the preferred installation directory or just to the home folder. Clone the Simulator and all submodules:
 
 ```shell
-git clone --recurse-submodules https://github.com/matth-x/ArduinoOcppSimulator
+git clone --recurse-submodules https://github.com/matth-x/MicroOcppSimulator
 ```
 
 Navigate to the copy of the Simulator, prepare some necessary local folders and build:
 
 ```shell
-cd ArduinoOcppSimulator
+cd MicroOcppSimulator
 mkdir build
-mkdir ao_store
+mkdir mo_store
 cmake -S . -B ./build
-cmake --build ./build -j 16 --target ao_simulator
+cmake --build ./build -j 16 --target mo_simulator
 ```
 
 The installation is complete! To run the Simulator, type:
 
 ```shell
-./build/ao_simulator
+./build/mo_simulator
 ```
 
 This will open [localhost:8000](http://localhost:8000). You can access the Graphical User Interface by entering that address into a browser running on the same computer. Make sure that the firewall settings allow the Simulator to connect and to be reached.
@@ -68,4 +68,4 @@ During the process there might be some warnings displayed. Als long as the scrip
 
 ## License
 
-This project is licensed under the GPL as it uses the [Mongoose Embedded Networking Library](https://github.com/cesanta/mongoose). If you have a proprietary license of Mongoose, then the [MIT License](https://github.com/matth-x/ArduinoOcpp/blob/master/LICENSE) applies.
+This project is licensed under the GPL as it uses the [Mongoose Embedded Networking Library](https://github.com/cesanta/mongoose). If you have a proprietary license of Mongoose, then the [MIT License](https://github.com/matth-x/MicroOcpp/blob/master/LICENSE) applies.
