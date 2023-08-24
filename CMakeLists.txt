@@ -32,10 +32,10 @@ add_compile_definitions(
     MOCPP_FILENAME_PREFIX="./mo_store/"
     )
 
-add_subdirectory(lib/ArduinoOcpp)
+add_subdirectory(lib/MicroOcpp)
 target_link_libraries(mo_simulator PUBLIC MicroOcpp)
 
-add_subdirectory(lib/ArduinoOcppMongoose)
+add_subdirectory(lib/MicroOcppMongoose)
 target_link_libraries(mo_simulator PUBLIC MicroOcppMongoose)
 
 target_link_libraries(mo_simulator PUBLIC ssl crypto)
