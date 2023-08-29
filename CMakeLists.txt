@@ -4,11 +4,19 @@
 
 cmake_minimum_required(VERSION 3.13)
 
-set(MOCPP_SM_SRC
+set(MOCPP_SIM_SRC
     src/evse.cpp
     src/main.cpp
+    src/api.cpp
+)
+
+set(MOCPP_SIM_MG_SRC
     src/webserver.cpp
     lib/mongoose/mongoose.c
+)
+
+set(MOCPP_SIM_WASM_SRC
+    src/net_wasm.cpp
 )
 
 project(MicroOcppSimulator
@@ -17,20 +25,25 @@ project(MicroOcppSimulator
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable(mo_simulator ${MOCPP_SM_SRC})
+add_executable(mo_simulator ${MOCPP_SIM_SRC} ${MOCPP_SIM_MG_SRC})
 
 target_include_directories(mo_simulator PUBLIC
-                           "${PROJECT_DIR}/lib/ArduinoJson/src"
-                           "${PROJECT_DIR}/lib/mongoose"
-                           )
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/ArduinoJson/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/mongoose"
+)
 
 add_compile_definitions(
-    MG_ENABLE_OPENSSL=1
+    MOCPP_PLATFORM=MOCPP_PLATFORM_UNIX
     MOCPP_NUMCONNECTORS=3
     MOCPP_TRAFFIC_OUT
     MOCPP_DBG_LEVEL=MOCPP_DL_INFO
     MOCPP_FILENAME_PREFIX="./mo_store/"
-    )
+)
+
+target_compile_definitions(mo_simulator PUBLIC
+    MOCPP_NETLIB=MOCPP_NETLIB_MONGOOSE
+    MG_ENABLE_OPENSSL=1
+)
 
 add_subdirectory(lib/MicroOcpp)
 target_link_libraries(mo_simulator PUBLIC MicroOcpp)
@@ -39,3 +52,29 @@ add_subdirectory(lib/MicroOcppMongoose)
 target_link_libraries(mo_simulator PUBLIC MicroOcppMongoose)
 
 target_link_libraries(mo_simulator PUBLIC ssl crypto)
+
+# experimental WebAssembly port
+add_executable(mo_simulator_for_wasm ${MOCPP_SIM_SRC} ${MOCPP_SIM_WASM_SRC})
+
+target_include_directories(mo_simulator_for_wasm PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/ArduinoJson/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/MicroOcppMongoose/src"
+)
+
+target_compile_definitions(mo_simulator_for_wasm PUBLIC
+   MOCPP_NETLIB=MOCPP_NETLIB_WASM
+)
+
+target_link_options(mo_simulator_for_wasm PUBLIC
+    -lwebsocket.js
+    -sENVIRONMENT=web
+    -sEXPORT_NAME=createModule
+    -sUSE_ES6_IMPORT_META=0
+    -sEXPORTED_FUNCTIONS=_main,_mocpp_wasm_api_call
+    -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
+    -O3
+)
+
+target_link_libraries(mo_simulator_for_wasm PUBLIC MicroOcpp)
+
+set(CMAKE_EXECUTABLE_SUFFIX ".mjs")
