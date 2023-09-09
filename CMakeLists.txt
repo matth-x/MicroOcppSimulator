@@ -11,7 +11,7 @@ set(MOCPP_SIM_SRC
 )
 
 set(MOCPP_SIM_MG_SRC
-    src/webserver.cpp
+    src/net_mongoose.cpp
     lib/mongoose/mongoose.c
 )
 
@@ -25,19 +25,19 @@ project(MicroOcppSimulator
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+add_compile_definitions(
+    MOCPP_PLATFORM=MOCPP_PLATFORM_UNIX
+    MOCPP_NUMCONNECTORS=3
+    MOCPP_TRAFFIC_OUT
+    MOCPP_DBG_LEVEL=MOCPP_DL_VERBOSE
+    MOCPP_FILENAME_PREFIX="./mo_store/"
+)
+
 add_executable(mo_simulator ${MOCPP_SIM_SRC} ${MOCPP_SIM_MG_SRC})
 
 target_include_directories(mo_simulator PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/ArduinoJson/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/mongoose"
-)
-
-add_compile_definitions(
-    MOCPP_PLATFORM=MOCPP_PLATFORM_UNIX
-    MOCPP_NUMCONNECTORS=3
-    MOCPP_TRAFFIC_OUT
-    MOCPP_DBG_LEVEL=MOCPP_DL_INFO
-    MOCPP_FILENAME_PREFIX="./mo_store/"
 )
 
 target_compile_definitions(mo_simulator PUBLIC
@@ -54,27 +54,29 @@ target_link_libraries(mo_simulator PUBLIC MicroOcppMongoose)
 target_link_libraries(mo_simulator PUBLIC ssl crypto)
 
 # experimental WebAssembly port
-add_executable(mo_simulator_for_wasm ${MOCPP_SIM_SRC} ${MOCPP_SIM_WASM_SRC})
+add_executable(mo_simulator_wasm ${MOCPP_SIM_SRC} ${MOCPP_SIM_WASM_SRC})
 
-target_include_directories(mo_simulator_for_wasm PUBLIC
+target_include_directories(mo_simulator_wasm PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/ArduinoJson/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/MicroOcppMongoose/src"
 )
 
-target_compile_definitions(mo_simulator_for_wasm PUBLIC
+target_compile_definitions(mo_simulator_wasm PUBLIC
    MOCPP_NETLIB=MOCPP_NETLIB_WASM
 )
 
-target_link_options(mo_simulator_for_wasm PUBLIC
+target_link_options(mo_simulator_wasm PUBLIC
     -lwebsocket.js
     -sENVIRONMENT=web
     -sEXPORT_NAME=createModule
     -sUSE_ES6_IMPORT_META=0
     -sEXPORTED_FUNCTIONS=_main,_mocpp_wasm_api_call
     -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
-    -O3
+    -Os
 )
 
-target_link_libraries(mo_simulator_for_wasm PUBLIC MicroOcpp)
+target_link_libraries(mo_simulator_wasm PUBLIC MicroOcpp)
 
-set(CMAKE_EXECUTABLE_SUFFIX ".mjs")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    set(CMAKE_EXECUTABLE_SUFFIX ".mjs")
+endif()

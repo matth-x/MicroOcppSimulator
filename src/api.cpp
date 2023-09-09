@@ -127,6 +127,8 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
         response["maxPower"] = evse->getSmartChargingMaxPower();
         response["maxCurrent"] = evse->getSmartChargingMaxCurrent();
         status = 200;
+    } else {
+        return 404;
     }
 
     if (response.overflowed()) {

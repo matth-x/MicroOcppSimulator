@@ -68,6 +68,29 @@ For this to work NodeJS, npm and git have to be installed on your machine. The c
 
 During the process there might be some warnings displayed. Als long as the script exits without an error everything worked fine. An up-to-date version of the webapp should be placed in the *public* folder.
 
+## Porting to WebAssembly (Developers)
+
+If you want to run the Simulator in the browser instead of a Linux host, you can port the code for WebAssembly.
+
+Make sure that emscripten is installed and on the path (see [https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended](https://emscripten.org/docs/getting_started/downloads.html#installation-instructions-using-the-emsdk-recommended)).
+
+Then, create the CMake build files with the corresponding emscripten tool and change the target:
+
+```shell
+emcmake cmake -S . -B ./build
+cmake --build ./build -j 16 --target mo_simulator_wasm
+```
+
+The compiler toolchain should emit the WebAssembly binary and a JavaScript wrapper into the build folder. They need to be built into the preact webapp. Instead of making XHR requests to the server, the webapp will call the API of the WebAssembly JS wrapper then. The `install_webassembly.sh` script patches the webapp sources with the WASM binary and JS wrapper:
+
+```shell
+./build-webapp/install_webassembly.sh
+```
+
+Now, the GUI can be developed or built as described in the [webapp repository](https://github.com/agruenb/arduino-ocpp-dashboard).
+
+After building the GUI, the emited files contain the full Simulator functionality. To run the Simualtor, start an HTTP file server in the dist folder and access it with your browser.
+
 ## License
 
 This project is licensed under the GPL as it uses the [Mongoose Embedded Networking Library](https://github.com/cesanta/mongoose). If you have a proprietary license of Mongoose, then the [MIT License](https://github.com/matth-x/MicroOcpp/blob/master/LICENSE) applies.

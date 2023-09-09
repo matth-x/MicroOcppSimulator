@@ -1,7 +1,6 @@
-#if 0
-
-#include "webserver.h"
+#include "net_mongoose.h"
 #include "evse.h"
+#include "api.h"
 #include <MicroOcppMongooseClient.h>
 #include <string>
 #include <ArduinoJson.h>
@@ -29,12 +28,6 @@ char* toStringPtr(std::string cppString){
   return cstr;
 }
 
-enum class Method {
-    GET,
-    POST,
-    UNDEFINED
-};
-
 void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_HTTP_MSG) {
         //struct mg_http_message *message_data = (struct mg_http_message *) ev_data;
@@ -44,13 +37,13 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
 
         MOCPP_DBG_VERBOSE("%.*s", 20, message_data->uri.ptr);
 
-        Method method = Method::UNDEFINED;
+        MicroOcpp::Method method = MicroOcpp::Method::UNDEFINED;
 
         if (!mg_vcasecmp(&message_data->method, "POST")) {
-            method = Method::POST;
+            method = MicroOcpp::Method::POST;
             MOCPP_DBG_VERBOSE("POST");
         } else if (!mg_vcasecmp(&message_data->method, "GET")) {
-            method = Method::GET;
+            method = MicroOcpp::Method::GET;
             MOCPP_DBG_VERBOSE("GET");
         }
 
@@ -60,7 +53,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             auto webSocketPingInterval = MicroOcpp::declareConfiguration<int>("WebSocketPingInterval", (int) 10, OCPP_CREDENTIALS_FN);
             auto reconnectInterval = MicroOcpp::declareConfiguration<int>("MOCPP_ReconnectInterval", (int) 30, OCPP_CREDENTIALS_FN);
                     
-            if (method == Method::POST) {
+            if (method == MicroOcpp::Method::POST) {
                 if (auto val = mg_json_get_str(json, "$.backendUrl")) {
                     ao_sock->setBackendUrl(val);
                 }
@@ -98,18 +91,30 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             serializeJson(doc, serialized);
             mg_http_reply(c, 200, final_headers, serialized.c_str());
             return;
-        } else if(mg_http_match_uri(message_data, "/api/*")){
-            
-        }
-    //if no specific path is given serve dashboard application file
-    else if (mg_http_match_uri(message_data, "/")) {
-      struct mg_http_serve_opts opts = { .root_dir = "./public" };
-      opts.extra_headers = "Content-Type: text/html\r\nContent-Encoding: gzip\r\n";
-      mg_http_serve_file(c, message_data, "public/bundle.html.gz", &opts);
-    } else {
-        mg_http_reply(c, 404, final_headers, "The required parameters are not given");
-    }
-  }
-}
+        } else if(strncmp(message_data->uri.ptr, "/api", strlen("api")) == 0) {
+            #define RESP_BUF_SIZE 1024
+            char resp_buf [RESP_BUF_SIZE];
 
-#endif
+            //replace endpoint-body separator by null
+            if (char *c = strchr((char*) message_data->uri.ptr, ' ')) {
+                *c = '\0';
+            }
+
+            int status = mocpp_api_call(
+                message_data->uri.ptr + strlen("/api"),
+                method,
+                message_data->body.ptr,
+                resp_buf, RESP_BUF_SIZE);
+            
+            mg_http_reply(c, status, final_headers, resp_buf);
+        }
+        //if no specific path is given serve dashboard application file
+        else if (mg_http_match_uri(message_data, "/")) {
+        struct mg_http_serve_opts opts = { .root_dir = "./public" };
+        opts.extra_headers = "Content-Type: text/html\r\nContent-Encoding: gzip\r\n";
+        mg_http_serve_file(c, message_data, "public/bundle.html.gz", &opts);
+        } else {
+            mg_http_reply(c, 404, final_headers, "The required parameters are not given");
+        }
+    }
+}

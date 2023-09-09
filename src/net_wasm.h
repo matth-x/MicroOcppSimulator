@@ -1,8 +1,7 @@
 #ifndef MOCPP_NET_WASM_H
 #define MOCPP_NET_WASM_H
 
-//#if MOCPP_NETLIB == MOCPP_NETLIB_WASM
-#if 1
+#if MOCPP_NETLIB == MOCPP_NETLIB_WASM
 
 #include <MicroOcpp/Core/Connection.h>
 

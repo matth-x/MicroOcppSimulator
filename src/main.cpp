@@ -10,18 +10,20 @@ std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors {{1,2}};
 std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors {{1}};
 #endif
 
-//#if MOCPP_NETLIB == MOCPP_NETLIB_MONGOOSE
-#if 0
+#define MOCPP_NETLIB_MONGOOSE 1
+#define MOCPP_NETLIB_WASM 2
+
+
+#if MOCPP_NETLIB == MOCPP_NETLIB_MONGOOSE
 #include "mongoose.h"
 #include <MicroOcppMongooseClient.h>
 
-#include "webserver.h"
+#include "net_mongoose.h"
 
 struct mg_mgr mgr;
 MicroOcpp::MOcppMongooseClient *osock;
 
-//#elif MOCPP_NETLIB == MOCPP_NETLIB_WASM
-#elif 1
+#elif MOCPP_NETLIB == MOCPP_NETLIB_WASM
 #include <emscripten.h>
 
 #include <MicroOcpp/Core/Connection.h>
@@ -57,8 +59,7 @@ void app_loop() {
     }
 }
 
-//#if MOCPP_NETLIB == MOCPP_NETLIB_MONGOOSE
-#if 0
+#if MOCPP_NETLIB == MOCPP_NETLIB_MONGOOSE
 
 int main() {
     mg_log_set(MG_LL_INFO);                            
@@ -88,8 +89,7 @@ int main() {
     return 0;
 }
 
-//#elif MOCPP_NETLIB == MOCPP_NETLIB_WASM
-#elif 1
+#elif MOCPP_NETLIB == MOCPP_NETLIB_WASM
 
 int main() {
 
@@ -97,7 +97,7 @@ int main() {
 
     auto filesystem = MicroOcpp::makeDefaultFilesystemAdapter(MicroOcpp::FilesystemOpt::Deactivate);
 
-    conn = wasm_ocpp_connection_init("wss://echo.websocket.events/", nullptr, nullptr);
+    conn = wasm_ocpp_connection_init(nullptr, nullptr, nullptr);
 
     app_setup(*conn, filesystem);
 
