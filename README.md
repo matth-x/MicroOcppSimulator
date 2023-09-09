@@ -2,9 +2,9 @@
 
 **Formerly ArduinoOcppSimulator**: *see the statement on the former ArduinoOcpp [project site](https://github.com/matth-x/MicroOcpp) for more details.*
 
-Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu or the WSL.
+Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu or the WSL. **New** (August 2023): the Simulator has been ported to WebAssembly and runs natively in the browser too: [Try it](https://demo.micro-ocpp.com/)
 
-![Screenshot](https://github.com/agruenb/arduino-ocpp-dashboard/blob/master/docs/img/status_page.png)
+[![Screenshot](https://github.com/agruenb/arduino-ocpp-dashboard/blob/master/docs/img/status_page.png)](https://demo.micro-ocpp.com/)
 
 The Simulator has two purposes:
 - As a development tool, it allows to run MicroOcpp directly on the host computer and simplifies the development (no flashing of the microcontroller required)
