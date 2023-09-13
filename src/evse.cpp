@@ -112,6 +112,8 @@ void Evse::loop() {
 
     bool simulate_isCharging = ocppPermitsCharge(connectorId) && *trackEvPlugged && *trackEvReady && *trackEvseReady;
 
+    simulate_isCharging &= limit_power >= 720.f; //minimum charging current is 6A (720W for 120V grids) according to J1772
+
     if (simulate_isCharging) {
         if (simulate_power >= 1.f) {
             simulate_energy += (float) (mocpp_tick_ms() - simulate_energy_track_time) * simulate_power * (0.001f / 3600.f);
