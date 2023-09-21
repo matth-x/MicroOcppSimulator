@@ -32,22 +32,25 @@ void Evse::setup() {
     char key [30] = {'\0'};
 
     snprintf(key, 30, "evPlugged_cId_%u", connectorId);
-    trackEvPlugged = MicroOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
+    trackEvPluggedKey = key;
+    trackEvPluggedBool = MicroOcpp::declareConfiguration(trackEvPluggedKey.c_str(), false, SIMULATOR_FN, false, false, false);
     snprintf(key, 30, "evReady_cId_%u", connectorId);
-    trackEvReady = MicroOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
+    trackEvReadyKey = key;
+    trackEvReadyBool = MicroOcpp::declareConfiguration(trackEvReadyKey.c_str(), false, SIMULATOR_FN, false, false, false);
     snprintf(key, 30, "evseReady_cId_%u", connectorId);
-    trackEvseReady = MicroOcpp::declareConfiguration(key, false, SIMULATOR_FN, false, false);
+    trackEvseReadyKey = key;
+    trackEvseReadyBool = MicroOcpp::declareConfiguration(trackEvseReadyKey.c_str(), false, SIMULATOR_FN, false, false, false);
 
     connector->setConnectorPluggedInput([this] () -> bool {
-        return *trackEvPlugged; //return if J1772 is in State B or C
+        return trackEvPluggedBool->getBool(); //return if J1772 is in State B or C
     });
 
     connector->setEvReadyInput([this] () -> bool {
-        return *trackEvReady; //return if J1772 is in State C
+        return trackEvReadyBool->getBool(); //return if J1772 is in State C
     });
 
     connector->setEvseReadyInput([this] () -> bool {
-        return *trackEvseReady;
+        return trackEvseReadyBool->getBool();
     });
 
     connector->addErrorCodeInput([this] () -> const char* {
@@ -110,7 +113,7 @@ void Evse::loop() {
     }
 
 
-    bool simulate_isCharging = ocppPermitsCharge(connectorId) && *trackEvPlugged && *trackEvReady && *trackEvseReady;
+    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
 
     simulate_isCharging &= limit_power >= 720.f; //minimum charging current is 6A (720W for 120V grids) according to J1772
 
@@ -153,36 +156,36 @@ void Evse::presentNfcTag(const char *uid_cstr) {
 }
 
 void Evse::setEvPlugged(bool plugged) {
-    if (!trackEvPlugged) return;
-    *trackEvPlugged = plugged;
+    if (!trackEvPluggedBool) return;
+    trackEvPluggedBool->setBool(plugged);
     MicroOcpp::configuration_save();
 }
 
 bool Evse::getEvPlugged() {
-    if (!trackEvPlugged) return false;
-    return *trackEvPlugged;
+    if (!trackEvPluggedBool) return false;
+    return trackEvPluggedBool->getBool();
 }
 
 void Evse::setEvReady(bool ready) {
-    if (!trackEvReady) return;
-    *trackEvReady = ready;
+    if (!trackEvReadyBool) return;
+    trackEvReadyBool->setBool(ready);
     MicroOcpp::configuration_save();
 }
 
 bool Evse::getEvReady() {
-    if (!trackEvReady) return false;
-    return *trackEvReady;
+    if (!trackEvReadyBool) return false;
+    return trackEvReadyBool->getBool();
 }
 
 void Evse::setEvseReady(bool ready) {
-    if (!trackEvseReady) return;
-    *trackEvseReady = ready;
+    if (!trackEvseReadyBool) return;
+    trackEvseReadyBool->setBool(ready);
     MicroOcpp::configuration_save();
 }
 
 bool Evse::getEvseReady() {
-    if (!trackEvseReady) return false;
-    return *trackEvseReady;
+    if (!trackEvseReadyBool) return false;
+    return trackEvseReadyBool->getBool();
 }
 
 const char *Evse::getSessionIdTag() {
