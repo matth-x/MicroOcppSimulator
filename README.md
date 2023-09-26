@@ -2,7 +2,7 @@
 
 **Formerly ArduinoOcppSimulator**: *see the statement on the former ArduinoOcpp [project site](https://github.com/matth-x/MicroOcpp) for more details.*
 
-Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu or the WSL. **New** (August 2023): the Simulator has been ported to WebAssembly and runs natively in the browser too: [Try it](https://demo.micro-ocpp.com/)
+Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu, WSL, or MSYS2. **New** (August 2023): the Simulator has been ported to WebAssembly and runs natively in the browser too: [Try it](https://demo.micro-ocpp.com/)
 
 [![Screenshot](https://github.com/agruenb/arduino-ocpp-dashboard/blob/master/docs/img/status_page.png)](https://demo.micro-ocpp.com/)
 
@@ -35,7 +35,7 @@ The Simulator should be up and running now on [localhost:8000](http://localhost:
 
 ## Installation (Ubuntu or WSL)
 
-On Windows, get the Windows Subsystem for Linux (WSL): [https://ubuntu.com/wsl](https://ubuntu.com/wsl)
+On Windows, get the Windows Subsystem for Linux (WSL): [https://ubuntu.com/wsl](https://ubuntu.com/wsl) or [MSYS2](https://www.msys2.org/).
 
 Then follow the same steps like for Ubuntu.
 

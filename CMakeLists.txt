@@ -80,3 +80,8 @@ target_link_libraries(mo_simulator_wasm PUBLIC MicroOcpp)
 if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     set(CMAKE_EXECUTABLE_SUFFIX ".mjs")
 endif()
+
+if(WIN32)
+  target_link_libraries(mo_simulator PUBLIC wsock32 ws2_32)
+  set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
+endif()
