@@ -10,9 +10,12 @@ class Evse {
 private:
     const unsigned int connectorId;
 
-    std::shared_ptr<MicroOcpp::Configuration<bool>> trackEvPlugged;
-    std::shared_ptr<MicroOcpp::Configuration<bool>> trackEvReady;
-    std::shared_ptr<MicroOcpp::Configuration<bool>> trackEvseReady;
+    std::shared_ptr<MicroOcpp::Configuration> trackEvPluggedBool;
+    std::string trackEvPluggedKey;
+    std::shared_ptr<MicroOcpp::Configuration> trackEvReadyBool;
+    std::string trackEvReadyKey;
+    std::shared_ptr<MicroOcpp::Configuration> trackEvseReadyBool;
+    std::string trackEvseReadyKey;
 
     const float SIMULATE_POWER_CONST = 11000.f;
     float simulate_power = 0;
@@ -48,7 +51,7 @@ public:
     bool chargingPermitted();
 
     bool isCharging() {
-        return chargingPermitted() && trackEvReady;
+        return chargingPermitted() && trackEvReadyBool->getBool();
     }
 
     const char *getOcppStatus() {

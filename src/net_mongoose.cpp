@@ -10,8 +10,6 @@
 static const char *s_http_addr = "http://localhost:8000";  // HTTP port
 static const char *s_root_dir = "web_root";
 
-#define OCPP_CREDENTIALS_FN MOCPP_FILENAME_PREFIX "ws-conn.jsn"
-
 //cors_headers allow the browser to make requests from any domain, allowing all headers and all methods
 #define DEFAULT_HEADER "Content-Type: application/json\r\n"
 #define CORS_HEADERS "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers:Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers\r\nAccess-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT\r\n"
@@ -50,8 +48,8 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         //start different api endpoints
         if(mg_http_match_uri(message_data, "/api/websocket")){
             MOCPP_DBG_VERBOSE("query websocket");
-            auto webSocketPingInterval = MicroOcpp::declareConfiguration<int>("WebSocketPingInterval", (int) 10, OCPP_CREDENTIALS_FN);
-            auto reconnectInterval = MicroOcpp::declareConfiguration<int>("MOCPP_ReconnectInterval", (int) 30, OCPP_CREDENTIALS_FN);
+            auto webSocketPingIntervalInt = MicroOcpp::declareConfiguration<int>("WebSocketPingInterval", 10, MOCPP_WSCONN_FN);
+            auto reconnectIntervalInt = MicroOcpp::declareConfiguration<int>(MOCPP_CONFIG_EXT_PREFIX "ReconnectInterval", 30, MOCPP_WSCONN_FN);
                     
             if (method == MicroOcpp::Method::POST) {
                 if (auto val = mg_json_get_str(json, "$.backendUrl")) {
@@ -66,13 +64,13 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                 {
                     auto val = mg_json_get_long(json, "$.pingInterval", -1);
                     if (val > 0) {
-                        *webSocketPingInterval = (int) val;
+                        webSocketPingIntervalInt->setInt(val);
                     }
                 }
                 {
                     auto val = mg_json_get_long(json, "$.reconnectInterval", -1);
                     if (val > 0) {
-                        *reconnectInterval = (int) val;
+                        reconnectIntervalInt->setInt(val);
                     }
                 }
                 if (auto val = mg_json_get_str(json, "$.dnsUrl")) {
@@ -85,8 +83,8 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             doc["backendUrl"] = ao_sock->getBackendUrl();
             doc["chargeBoxId"] = ao_sock->getChargeBoxId();
             doc["authorizationKey"] = ao_sock->getAuthKey();
-            doc["pingInterval"] = (int) *webSocketPingInterval;
-            doc["reconnectInterval"] = (int) *reconnectInterval;
+            doc["pingInterval"] = webSocketPingIntervalInt->getInt();
+            doc["reconnectInterval"] = reconnectIntervalInt->getInt();
             std::string serialized;
             serializeJson(doc, serialized);
             mg_http_reply(c, 200, final_headers, serialized.c_str());
