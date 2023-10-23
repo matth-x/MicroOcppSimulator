@@ -33,23 +33,23 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
         const char *final_headers = DEFAULT_HEADER CORS_HEADERS;
         struct mg_str json = message_data->body;
 
-        MOCPP_DBG_VERBOSE("%.*s", 20, message_data->uri.ptr);
+        MO_DBG_VERBOSE("%.*s", 20, message_data->uri.ptr);
 
         MicroOcpp::Method method = MicroOcpp::Method::UNDEFINED;
 
         if (!mg_vcasecmp(&message_data->method, "POST")) {
             method = MicroOcpp::Method::POST;
-            MOCPP_DBG_VERBOSE("POST");
+            MO_DBG_VERBOSE("POST");
         } else if (!mg_vcasecmp(&message_data->method, "GET")) {
             method = MicroOcpp::Method::GET;
-            MOCPP_DBG_VERBOSE("GET");
+            MO_DBG_VERBOSE("GET");
         }
 
         //start different api endpoints
         if(mg_http_match_uri(message_data, "/api/websocket")){
-            MOCPP_DBG_VERBOSE("query websocket");
-            auto webSocketPingIntervalInt = MicroOcpp::declareConfiguration<int>("WebSocketPingInterval", 10, MOCPP_WSCONN_FN);
-            auto reconnectIntervalInt = MicroOcpp::declareConfiguration<int>(MOCPP_CONFIG_EXT_PREFIX "ReconnectInterval", 30, MOCPP_WSCONN_FN);
+            MO_DBG_VERBOSE("query websocket");
+            auto webSocketPingIntervalInt = MicroOcpp::declareConfiguration<int>("WebSocketPingInterval", 10, MO_WSCONN_FN);
+            auto reconnectIntervalInt = MicroOcpp::declareConfiguration<int>(MO_CONFIG_EXT_PREFIX "ReconnectInterval", 30, MO_WSCONN_FN);
                     
             if (method == MicroOcpp::Method::POST) {
                 if (auto val = mg_json_get_str(json, "$.backendUrl")) {
@@ -61,6 +61,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                 if (auto val = mg_json_get_str(json, "$.authorizationKey")) {
                     ao_sock->setAuthKey(val);
                 }
+                ao_sock->reloadConfigs();
                 {
                     auto val = mg_json_get_long(json, "$.pingInterval", -1);
                     if (val > 0) {
@@ -74,7 +75,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                     }
                 }
                 if (auto val = mg_json_get_str(json, "$.dnsUrl")) {
-                    MOCPP_DBG_WARN("dnsUrl not implemented");
+                    MO_DBG_WARN("dnsUrl not implemented");
                     (void)val;
                 }
                 MicroOcpp::configuration_save();

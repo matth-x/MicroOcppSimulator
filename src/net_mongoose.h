@@ -1,7 +1,7 @@
-#ifndef MOCPP_NET_MONGOOSE_H
-#define MOCPP_NET_MONGOOSE_H
+#ifndef MO_NET_MONGOOSE_H
+#define MO_NET_MONGOOSE_H
 
-#if MOCPP_NETLIB == MOCPP_NETLIB_MONGOOSE
+#if MO_NETLIB == MO_NETLIB_MONGOOSE
 
 #include "mongoose.h"
 
@@ -13,6 +13,6 @@ void server_initialize(MicroOcpp::MOcppMongooseClient *osock);
 
 void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data);
 
-#endif //MOCPP_NETLIB == MOCPP_NETLIB_MONGOOSE
+#endif //MO_NETLIB == MO_NETLIB_MONGOOSE
 
 #endif

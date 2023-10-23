@@ -28,7 +28,7 @@ private:
     std::shared_ptr<Configuration<const char*>> setting_backend_url;
     std::shared_ptr<Configuration<const char*>> setting_cb_id;
     std::shared_ptr<Configuration<const char*>> setting_auth_key;
-#if !MOCPP_CA_CERT_LOCAL
+#if !MO_CA_CERT_LOCAL
     std::shared_ptr<Configuration<const char*>> setting_ca_cert;
 #endif
     unsigned long last_status_dbg_msg {0}, last_recv {0};
@@ -48,7 +48,7 @@ private:
         basic_auth64.clear();
 
         if (backend_url.empty()) {
-            MOCPP_DBG_DEBUG("empty URL closes connection");
+            MO_DBG_DEBUG("empty URL closes connection");
             return;
         } else {
             url = backend_url;
@@ -63,7 +63,7 @@ private:
         if (!auth_key.empty()) {
             std::string token = cb_id + ":" + auth_key;
 
-            MOCPP_DBG_DEBUG("auth Token=%s", token.c_str());
+            MO_DBG_DEBUG("auth Token=%s", token.c_str());
 
             unsigned int base64_length = encode_base64_length(token.length());
             std::vector<unsigned char> base64 (base64_length + 1);
@@ -71,11 +71,11 @@ private:
             // encode_base64() places a null terminator automatically, because the output is a string
             base64_length = encode_base64((const unsigned char*) token.c_str(), token.length(), &base64[0]);
 
-            MOCPP_DBG_DEBUG("auth64 len=%u, auth64 Token=%s", base64_length, &base64[0]);
+            MO_DBG_DEBUG("auth64 len=%u, auth64 Token=%s", base64_length, &base64[0]);
 
             basic_auth64 = (const char*) &base64[0];
         } else {
-            MOCPP_DBG_DEBUG("no authentication");
+            MO_DBG_DEBUG("no authentication");
             (void) 0;
         }
     }
@@ -86,16 +86,16 @@ private:
 
             //WS successfully connected?
             if (!isConnectionOpen()) {
-                MOCPP_DBG_DEBUG("WS unconnected");
+                MO_DBG_DEBUG("WS unconnected");
             } else if (mocpp_tick_ms() - last_recv >= (ws_ping_interval && *ws_ping_interval > 0 ? (*ws_ping_interval * 1000UL) : 0UL) + WS_UNRESPONSIVE_THRESHOLD_MS) {
                 //WS connected but unresponsive
-                MOCPP_DBG_DEBUG("WS unresponsive");
+                MO_DBG_DEBUG("WS unresponsive");
             }
         }
 
         if (websocket && isConnectionOpen() &&
                 stale_timeout && *stale_timeout > 0 && mocpp_tick_ms() - last_recv >= (*stale_timeout * 1000UL)) {
-            MOCPP_DBG_INFO("connection %s -- stale, reconnect", url.c_str());
+            MO_DBG_INFO("connection %s -- stale, reconnect", url.c_str());
             reconnect();
             return;
         }
@@ -103,7 +103,7 @@ private:
         if (websocket && isConnectionOpen() &&
                 ws_ping_interval && *ws_ping_interval > 0 && mocpp_tick_ms() - last_hb >= (*ws_ping_interval * 1000UL)) {
             last_hb = mocpp_tick_ms();
-            MOCPP_DBG_VERBOSE("omit heartbeat");
+            MO_DBG_VERBOSE("omit heartbeat");
         }
 
         if (websocket != NULL) { //connection pointer != NULL means that the socket is still open
@@ -124,7 +124,7 @@ private:
             return;
         }
 
-        MOCPP_DBG_DEBUG("(re-)connect to %s", url.c_str());
+        MO_DBG_DEBUG("(re-)connect to %s", url.c_str());
 
         last_reconnection_attempt = mocpp_tick_ms();
 
@@ -137,7 +137,7 @@ private:
 
         websocket = emscripten_websocket_new(&attr);
         if (websocket < 0) {
-            MOCPP_DBG_ERR("emscripten_websocket_new: %i", websocket);
+            MO_DBG_ERR("emscripten_websocket_new: %i", websocket);
             websocket = 0;
         }
 
@@ -150,14 +150,14 @@ private:
                 this,
                 [] (int eventType, const EmscriptenWebSocketOpenEvent *websocketEvent, void *userData) -> EM_BOOL {
                     WasmOcppConnection *conn = reinterpret_cast<WasmOcppConnection*>(userData);
-                    MOCPP_DBG_DEBUG("on open eventType: %i", eventType);
-                    MOCPP_DBG_INFO("connection %s -- connected!", conn->getUrl());
+                    MO_DBG_DEBUG("on open eventType: %i", eventType);
+                    MO_DBG_INFO("connection %s -- connected!", conn->getUrl());
                     conn->setConnectionOpen(true);
                     conn->updateRcvTimer();
                     return true;
                 });
         if (ret_open < 0) {
-            MOCPP_DBG_ERR("emscripten_websocket_set_onopen_callback: %i", ret_open);
+            MO_DBG_ERR("emscripten_websocket_set_onopen_callback: %i", ret_open);
         }
         
         auto ret_message = emscripten_websocket_set_onmessage_callback(
@@ -165,16 +165,16 @@ private:
                 this,
                 [] (int eventType, const EmscriptenWebSocketMessageEvent *websocketEvent, void *userData) -> EM_BOOL {
                     WasmOcppConnection *conn = reinterpret_cast<WasmOcppConnection*>(userData);
-                    MOCPP_DBG_DEBUG("evenType: %i", eventType);
-                    MOCPP_DBG_DEBUG("txt: %s", websocketEvent->data ? (const char*) websocketEvent->data : "undefined");
+                    MO_DBG_DEBUG("evenType: %i", eventType);
+                    MO_DBG_DEBUG("txt: %s", websocketEvent->data ? (const char*) websocketEvent->data : "undefined");
                     if (!conn->getReceiveTXTcallback()((const char*) websocketEvent->data, websocketEvent->numBytes)) {
-                        MOCPP_DBG_WARN("processing input message failed");
+                        MO_DBG_WARN("processing input message failed");
                     }
                     conn->updateRcvTimer();
                     return true;
                 });
         if (ret_message < 0) {
-            MOCPP_DBG_ERR("emscripten_websocket_set_onmessage_callback: %i", ret_message);
+            MO_DBG_ERR("emscripten_websocket_set_onmessage_callback: %i", ret_message);
         }
 
         auto ret_err = emscripten_websocket_set_onerror_callback(
@@ -182,13 +182,13 @@ private:
                 this,
                 [] (int eventType, const EmscriptenWebSocketErrorEvent *websocketEvent, void *userData) -> EM_BOOL {
                     WasmOcppConnection *conn = reinterpret_cast<WasmOcppConnection*>(userData);
-                    MOCPP_DBG_DEBUG("on error eventType: %i", eventType);
-                    MOCPP_DBG_INFO("connection %s -- %s", conn->getUrl(), "error");
+                    MO_DBG_DEBUG("on error eventType: %i", eventType);
+                    MO_DBG_INFO("connection %s -- %s", conn->getUrl(), "error");
                     conn->cleanConnection();
                     return true;
                 });
         if (ret_open < 0) {
-            MOCPP_DBG_ERR("emscripten_websocket_set_onopen_callback: %i", ret_open);
+            MO_DBG_ERR("emscripten_websocket_set_onopen_callback: %i", ret_open);
         }
 
         auto ret_close = emscripten_websocket_set_onclose_callback(
@@ -196,13 +196,13 @@ private:
                 this,
                 [] (int eventType, const EmscriptenWebSocketCloseEvent *websocketEvent, void *userData) -> EM_BOOL {
                     WasmOcppConnection *conn = reinterpret_cast<WasmOcppConnection*>(userData);
-                    MOCPP_DBG_DEBUG("on close eventType: %i", eventType);
-                    MOCPP_DBG_INFO("connection %s -- %s", conn->getUrl(), "closed");
+                    MO_DBG_DEBUG("on close eventType: %i", eventType);
+                    MO_DBG_INFO("connection %s -- %s", conn->getUrl(), "closed");
                     conn->cleanConnection();
                     return true;
                 });
         if (ret_open < 0) {
-            MOCPP_DBG_ERR("emscripten_websocket_set_onopen_callback: %i", ret_open);
+            MO_DBG_ERR("emscripten_websocket_set_onopen_callback: %i", ret_open);
         }
     }
 
@@ -213,17 +213,17 @@ public:
             const char *auth_key_default) {
 
         setting_backend_url = declareConfiguration<const char*>(
-            MOCPP_CONFIG_EXT_PREFIX "BackendUrl", backend_url_default, CONFIGURATION_VOLATILE, true, true, true);
+            MO_CONFIG_EXT_PREFIX "BackendUrl", backend_url_default, CONFIGURATION_VOLATILE, true, true, true);
         setting_cb_id = declareConfiguration<const char*>(
-            MOCPP_CONFIG_EXT_PREFIX "ChargeBoxId", charge_box_id_default, CONFIGURATION_VOLATILE, true, true, true);
+            MO_CONFIG_EXT_PREFIX "ChargeBoxId", charge_box_id_default, CONFIGURATION_VOLATILE, true, true, true);
         setting_auth_key = declareConfiguration<const char*>(
             "AuthorizationKey", auth_key_default, CONFIGURATION_VOLATILE, true, true, true);
         ws_ping_interval = declareConfiguration<int>(
             "WebSocketPingInterval", 5, CONFIGURATION_VOLATILE);
         reconnect_interval = declareConfiguration<int>(
-            MOCPP_CONFIG_EXT_PREFIX "ReconnectInterval", 10, CONFIGURATION_VOLATILE);
+            MO_CONFIG_EXT_PREFIX "ReconnectInterval", 10, CONFIGURATION_VOLATILE);
         stale_timeout = declareConfiguration<int>(
-            MOCPP_CONFIG_EXT_PREFIX "StaleTimeout", 300, CONFIGURATION_VOLATILE);
+            MO_CONFIG_EXT_PREFIX "StaleTimeout", 300, CONFIGURATION_VOLATILE);
 
         configuration_save();
 
@@ -234,7 +234,7 @@ public:
         auth_key = setting_auth_key && *setting_auth_key ? *setting_auth_key : 
             (auth_key_default ? auth_key_default : "");
 
-        MOCPP_DBG_DEBUG("connection initialized");
+        MO_DBG_DEBUG("connection initialized");
 
         maintainWsConn();
     }
@@ -256,7 +256,7 @@ public:
         }
 
         if (auto ret = emscripten_websocket_send_utf8_text(websocket, out.c_str()) < 0) {
-            MOCPP_DBG_ERR("emscripten_websocket_send_utf8_text: %i", ret);
+            MO_DBG_ERR("emscripten_websocket_send_utf8_text: %i", ret);
             return false;
         }
 
@@ -273,7 +273,7 @@ public:
 
     void setBackendUrl(const char *backend_url_cstr) {
         if (!backend_url_cstr) {
-            MOCPP_DBG_ERR("invalid argument");
+            MO_DBG_ERR("invalid argument");
             return;
         }
         backend_url = backend_url_cstr;
@@ -290,7 +290,7 @@ public:
 
     void setChargeBoxId(const char *cb_id_cstr) {
         if (!cb_id_cstr) {
-            MOCPP_DBG_ERR("invalid argument");
+            MO_DBG_ERR("invalid argument");
             return;
         }
         cb_id = cb_id_cstr;
@@ -307,7 +307,7 @@ public:
 
     void setAuthKey(const char *auth_key_cstr) {
         if (!auth_key_cstr) {
-            MOCPP_DBG_ERR("invalid argument");
+            MO_DBG_ERR("invalid argument");
             return;
         }
         auth_key = auth_key_cstr;
@@ -328,7 +328,7 @@ public:
         }
         auto ret = emscripten_websocket_close(websocket, 1000, "reconnect");
         if (ret < 0) {
-            MOCPP_DBG_ERR("emscripten_websocket_close: %i", ret);
+            MO_DBG_ERR("emscripten_websocket_close: %i", ret);
         }
         setConnectionOpen(false);
     }
@@ -377,12 +377,12 @@ MicroOcpp::Connection *wasm_ocpp_connection_init(const char *backend_url_default
     return wasm_ocpp_connection_instance;
 }
 
-#define MOCPP_WASM_RESP_BUF_SIZE 1024
-char wasm_resp_buf [MOCPP_WASM_RESP_BUF_SIZE] = {'\0'};
+#define MO_WASM_RESP_BUF_SIZE 1024
+char wasm_resp_buf [MO_WASM_RESP_BUF_SIZE] = {'\0'};
 
 //exported to WebAssembly
 extern "C" char* mocpp_wasm_api_call(const char *endpoint, const char *method, const char *body) {
-    MOCPP_DBG_DEBUG("API call: %s, %s, %s", endpoint, method, body);
+    MO_DBG_DEBUG("API call: %s, %s, %s", endpoint, method, body);
 
     auto method_parsed = Method::UNDEFINED;
     if (!strcmp(method, "GET")) {
@@ -395,20 +395,20 @@ extern "C" char* mocpp_wasm_api_call(const char *endpoint, const char *method, c
     if (!strcmp(endpoint, "/websocket")) {
         sprintf(wasm_resp_buf, "%s", "{}");
         if (!wasm_ocpp_connection_instance) {
-            MOCPP_DBG_ERR("no websocket instance");
+            MO_DBG_ERR("no websocket instance");
             return nullptr;
         }
         StaticJsonDocument<512> request;
         if (*body) {
             auto err = deserializeJson(request, body);
             if (err) {
-                MOCPP_DBG_WARN("malformatted body: %s", err.c_str());
+                MO_DBG_WARN("malformatted body: %s", err.c_str());
                 return nullptr;
             }
         }
 
         auto webSocketPingInterval = declareConfiguration<int>("WebSocketPingInterval", 5, CONFIGURATION_VOLATILE);
-        auto reconnectInterval = declareConfiguration<int>(MOCPP_CONFIG_EXT_PREFIX "ReconnectInterval", 10, CONFIGURATION_VOLATILE);
+        auto reconnectInterval = declareConfiguration<int>(MO_CONFIG_EXT_PREFIX "ReconnectInterval", 10, CONFIGURATION_VOLATILE);
 
         if (method_parsed == Method::POST) {
             if (request.containsKey("backendUrl")) {
@@ -427,7 +427,7 @@ extern "C" char* mocpp_wasm_api_call(const char *endpoint, const char *method, c
                 *reconnectInterval = request["reconnectInterval"] | 0;
             }
             if (request.containsKey("dnsUrl")) {
-                MOCPP_DBG_WARN("dnsUrl not implemented");
+                MO_DBG_WARN("dnsUrl not implemented");
                 (void)0;
             }
             MicroOcpp::configuration_save();
@@ -440,19 +440,19 @@ extern "C" char* mocpp_wasm_api_call(const char *endpoint, const char *method, c
 
         response["pingInterval"] = webSocketPingInterval ? (int) *webSocketPingInterval : 0;
         response["reconnectInterval"] = reconnectInterval ? (int) *reconnectInterval : 0;
-        serializeJson(response, wasm_resp_buf, MOCPP_WASM_RESP_BUF_SIZE);
+        serializeJson(response, wasm_resp_buf, MO_WASM_RESP_BUF_SIZE);
         return wasm_resp_buf;
     }
     
     //all other endpoints
-    int status = mocpp_api_call(endpoint, method_parsed, body, wasm_resp_buf, MOCPP_WASM_RESP_BUF_SIZE);
+    int status = mocpp_api_call(endpoint, method_parsed, body, wasm_resp_buf, MO_WASM_RESP_BUF_SIZE);
 
     if (status == 200) {
         //200: HTTP status code Success
-        MOCPP_DBG_DEBUG("API resp: %s", wasm_resp_buf);
+        MO_DBG_DEBUG("API resp: %s", wasm_resp_buf);
         return wasm_resp_buf;
     } else {
-        MOCPP_DBG_DEBUG("API err: %i", status);
+        MO_DBG_DEBUG("API err: %i", status);
         return nullptr;
     }
 }

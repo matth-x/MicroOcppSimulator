@@ -4,17 +4,17 @@
 #include "evse.h"
 #include "api.h"
 
-#if MOCPP_NUMCONNECTORS == 3
-std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors {{1,2}};
+#if MO_NUMCONNECTORS == 3
+std::array<Evse, MO_NUMCONNECTORS - 1> connectors {{1,2}};
 #else
-std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors {{1}};
+std::array<Evse, MO_NUMCONNECTORS - 1> connectors {{1}};
 #endif
 
-#define MOCPP_NETLIB_MONGOOSE 1
-#define MOCPP_NETLIB_WASM 2
+#define MO_NETLIB_MONGOOSE 1
+#define MO_NETLIB_WASM 2
 
 
-#if MOCPP_NETLIB == MOCPP_NETLIB_MONGOOSE
+#if MO_NETLIB == MO_NETLIB_MONGOOSE
 #include "mongoose.h"
 #include <MicroOcppMongooseClient.h>
 
@@ -23,7 +23,7 @@ std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors {{1}};
 struct mg_mgr mgr;
 MicroOcpp::MOcppMongooseClient *osock;
 
-#elif MOCPP_NETLIB == MOCPP_NETLIB_WASM
+#elif MO_NETLIB == MO_NETLIB_WASM
 #include <emscripten.h>
 
 #include <MicroOcpp/Core/Connection.h>
@@ -33,7 +33,7 @@ MicroOcpp::MOcppMongooseClient *osock;
 MicroOcpp::Connection *conn = nullptr;
 
 #else
-#error Please ensure that build flag MOCPP_NETLIB is set as MOCPP_NETLIB_MONGOOSE or MOCPP_NETLIB_WASM
+#error Please ensure that build flag MO_NETLIB is set as MO_NETLIB_MONGOOSE or MO_NETLIB_WASM
 #endif
 
 /*
@@ -59,7 +59,7 @@ void app_loop() {
     }
 }
 
-#if MOCPP_NETLIB == MOCPP_NETLIB_MONGOOSE
+#if MO_NETLIB == MO_NETLIB_MONGOOSE
 
 int main() {
     mg_log_set(MG_LL_INFO);                            
@@ -89,7 +89,7 @@ int main() {
     return 0;
 }
 
-#elif MOCPP_NETLIB == MOCPP_NETLIB_WASM
+#elif MO_NETLIB == MO_NETLIB_WASM
 
 int main() {
 

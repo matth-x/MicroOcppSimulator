@@ -92,6 +92,6 @@ public:
 
 };
 
-extern std::array<Evse, MOCPP_NUMCONNECTORS - 1> connectors;
+extern std::array<Evse, MO_NUMCONNECTORS - 1> connectors;
 
 #endif

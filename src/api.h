@@ -1,5 +1,5 @@
-#ifndef MOCPP_SIM_API_H
-#define MOCPP_SIM_API_H
+#ifndef MO_SIM_API_H
+#define MO_SIM_API_H
 
 #include <cstddef>
 

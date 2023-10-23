@@ -8,7 +8,7 @@
 #include <cstring>
 #include <cstdlib>
 
-#define SIMULATOR_FN MOCPP_FILENAME_PREFIX "simulator.jsn"
+#define SIMULATOR_FN MO_FILENAME_PREFIX "simulator.jsn"
 
 Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
@@ -16,7 +16,7 @@ Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
 MicroOcpp::Connector *getConnector(unsigned int connectorId) {
     if (!getOcppContext()) {
-        MOCPP_DBG_ERR("unitialized");
+        MO_DBG_ERR("unitialized");
         return nullptr;
     }
     return getOcppContext()->getModel().getConnector(connectorId);
@@ -25,7 +25,7 @@ MicroOcpp::Connector *getConnector(unsigned int connectorId) {
 void Evse::setup() {
     auto connector = getConnector(connectorId);
     if (!connector) {
-        MOCPP_DBG_ERR("invalid state");
+        MO_DBG_ERR("invalid state");
         return;
     }
 
@@ -40,6 +40,8 @@ void Evse::setup() {
     snprintf(key, 30, "evseReady_cId_%u", connectorId);
     trackEvseReadyKey = key;
     trackEvseReadyBool = MicroOcpp::declareConfiguration(trackEvseReadyKey.c_str(), false, SIMULATOR_FN, false, false, false);
+
+    MicroOcpp::configuration_load(SIMULATOR_FN);
 
     connector->setConnectorPluggedInput([this] () -> bool {
         return trackEvPluggedBool->getBool(); //return if J1772 is in State B or C
@@ -98,7 +100,7 @@ void Evse::setup() {
     });
 
     setSmartChargingPowerOutput([this] (float limit) {
-        MOCPP_DBG_DEBUG("set limit: %f", limit);
+        MO_DBG_DEBUG("set limit: %f", limit);
         this->limit_power = limit;
     }, connectorId);
 }
@@ -134,13 +136,13 @@ void Evse::loop() {
 
 void Evse::presentNfcTag(const char *uid_cstr) {
     if (!uid_cstr) {
-        MOCPP_DBG_ERR("invalid argument");
+        MO_DBG_ERR("invalid argument");
         return;
     }
     std::string uid = uid_cstr;
     auto connector = getConnector(connectorId);
     if (!connector) {
-        MOCPP_DBG_ERR("invalid state");
+        MO_DBG_ERR("invalid state");
         return;
     }
 
@@ -148,7 +150,7 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         if (!uid.compare(connector->getTransaction()->getIdTag())) {
             connector->endTransaction(uid.c_str());
         } else {
-            MOCPP_DBG_INFO("RFID card denied");
+            MO_DBG_INFO("RFID card denied");
         }
     } else {
         connector->beginTransaction(uid.c_str());
@@ -191,7 +193,7 @@ bool Evse::getEvseReady() {
 const char *Evse::getSessionIdTag() {
     auto connector = getConnector(connectorId);
     if (!connector) {
-        MOCPP_DBG_ERR("invalid state");
+        MO_DBG_ERR("invalid state");
         return nullptr;
     }
     return connector->getTransaction() ? connector->getTransaction()->getIdTag() : nullptr;
@@ -200,7 +202,7 @@ const char *Evse::getSessionIdTag() {
 int Evse::getTransactionId() {
     auto connector = getConnector(connectorId);
     if (!connector) {
-        MOCPP_DBG_ERR("invalid state");
+        MO_DBG_ERR("invalid state");
         return -1;
     }
     return connector->getTransaction() ? connector->getTransaction()->getTransactionId() : -1;
@@ -209,7 +211,7 @@ int Evse::getTransactionId() {
 bool Evse::chargingPermitted() {
     auto connector = getConnector(connectorId);
     if (!connector) {
-        MOCPP_DBG_ERR("invalid state");
+        MO_DBG_ERR("invalid state");
         return false;
     }
     return connector->ocppPermitsCharge();

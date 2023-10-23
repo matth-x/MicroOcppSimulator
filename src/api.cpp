@@ -25,7 +25,7 @@ bool str_match(const char *query, const char *pattern) {
 
 int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *body, char *resp_body, size_t resp_body_size) {
     
-    MOCPP_DBG_DEBUG("process %s, %s: %s",
+    MO_DBG_DEBUG("process %s, %s: %s",
             endpoint,
             method == MicroOcpp::Method::GET ? "GET" :
             method == MicroOcpp::Method::POST ? "POST" : "error",
@@ -41,7 +41,7 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
     if (*body) {
         auto err = deserializeJson(request, body);
         if (err) {
-            MOCPP_DBG_WARN("malformatted body: %s", err.c_str());
+            MO_DBG_WARN("malformatted body: %s", err.c_str());
             return 400;
         }
     }
@@ -56,21 +56,21 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
         }
     }
 
-    MOCPP_DBG_VERBOSE("connectorId = %u", connectorId);
+    MO_DBG_VERBOSE("connectorId = %u", connectorId);
 
     Evse *evse = nullptr;
-    if (connectorId >= 1 && connectorId < MOCPP_NUMCONNECTORS) {
+    if (connectorId >= 1 && connectorId < MO_NUMCONNECTORS) {
         evse = &connectors[connectorId-1];
     }
 
     //start different api endpoints
     if(str_match(endpoint, "/connectors")) {
-        MOCPP_DBG_VERBOSE("query connectors");
+        MO_DBG_VERBOSE("query connectors");
         response.add("1");
         response.add("2");
         status = 200;
     } else if(str_match(endpoint, "/connector/*/evse")){
-        MOCPP_DBG_VERBOSE("query evse");
+        MO_DBG_VERBOSE("query evse");
         if (!evse) {
             return 404;
         }
@@ -93,7 +93,7 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
         response["chargePointStatus"] = evse->getOcppStatus();
         status = 200;
     } else if(str_match(endpoint, "/connector/*/meter")){
-        MOCPP_DBG_VERBOSE("query meter");
+        MO_DBG_VERBOSE("query meter");
         if (!evse) {
             return 404;
         }
@@ -104,7 +104,7 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
         response["voltage"] = evse->getVoltage();
         status = 200;
     } else if(str_match(endpoint, "/connector/*/transaction")){
-        MOCPP_DBG_VERBOSE("query transaction");
+        MO_DBG_VERBOSE("query transaction");
         if (!evse) {
             return 404;
         }
@@ -119,7 +119,7 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
         response["authorizationStatus"] = "";
         status = 200;
     } else if(str_match(endpoint, "/connector/*/smartcharging")){
-        MOCPP_DBG_VERBOSE("query smartcharging");
+        MO_DBG_VERBOSE("query smartcharging");
         if (!evse) {
             return 404;
         }
