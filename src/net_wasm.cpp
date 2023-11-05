@@ -172,9 +172,9 @@ private:
 
 public:
     WasmOcppConnection(
-            const char *backend_url_default, 
-            const char *charge_box_id_default,
-            const char *auth_key_default) {
+            const char *backend_url_factory, 
+            const char *charge_box_id_factory,
+            const char *auth_key_factory) {
 
         setting_backend_url_str = declareConfiguration<const char*>(
             MO_CONFIG_EXT_PREFIX "BackendUrl", backend_url_factory, CONFIGURATION_VOLATILE, true, true);
@@ -207,12 +207,12 @@ public:
         maintainWsConn();
     }
 
-    bool sendTXT(std::string &out) override {
+    bool sendTXT(const char *msg, size_t length) override {
         if (!websocket || !isConnectionOpen()) {
             return false;
         }
 
-        if (auto ret = emscripten_websocket_send_utf8_text(websocket, out.c_str()) < 0) {
+        if (auto ret = emscripten_websocket_send_utf8_text(websocket, msg) < 0) {
             MO_DBG_ERR("emscripten_websocket_send_utf8_text: %i", ret);
             return false;
         }
