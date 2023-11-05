@@ -1,0 +1,26 @@
+name: Docker
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+
+  pull_request:
+
+jobs:
+
+  compile-ubuntu-docker:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Get Docker
+      run: |
+        sudo apt update
+        sudo apt install docker
+    - name: Build Docker image
+      run: docker build -t matthx/microocppsimulator:latest .

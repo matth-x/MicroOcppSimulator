@@ -1,0 +1,28 @@
+name: Ubuntu
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+
+  pull_request:
+
+jobs:
+
+  compile-ubuntu-native:
+    name: Compile for Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Get compiler toolchain
+      run: |
+        sudo apt update
+        sudo apt install cmake libssl-dev build-essential
+    - name: Generate CMake files
+      run: cmake -S . -B ./build
+    - name: Compile
+      run: cmake --build ./build -j 16 --target mo_simulator

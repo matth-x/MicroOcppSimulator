@@ -24,61 +24,19 @@ private:
     std::string url; //url = backend_url + '/' + cb_id
     std::string auth_key;
     std::string basic_auth64;
-    std::string ca_cert;
-    std::shared_ptr<Configuration<const char*>> setting_backend_url;
-    std::shared_ptr<Configuration<const char*>> setting_cb_id;
-    std::shared_ptr<Configuration<const char*>> setting_auth_key;
-#if !MO_CA_CERT_LOCAL
-    std::shared_ptr<Configuration<const char*>> setting_ca_cert;
-#endif
+    std::shared_ptr<Configuration> setting_backend_url_str;
+    std::shared_ptr<Configuration> setting_cb_id_str;
+    std::shared_ptr<Configuration> setting_auth_key_str;
     unsigned long last_status_dbg_msg {0}, last_recv {0};
-    std::shared_ptr<Configuration<int>> reconnect_interval; //minimum time between two connect trials in s
+    std::shared_ptr<Configuration> reconnect_interval_int; //minimum time between two connect trials in s
     unsigned long last_reconnection_attempt {-1UL / 2UL};
-    std::shared_ptr<Configuration<int>> stale_timeout; //inactivity period after which the connection will be closed
-    std::shared_ptr<Configuration<int>> ws_ping_interval; //heartbeat intervall in s. 0 sets hb off
+    std::shared_ptr<Configuration> stale_timeout_int; //inactivity period after which the connection will be closed
+    std::shared_ptr<Configuration> ws_ping_interval_int; //heartbeat intervall in s. 0 sets hb off
     unsigned long last_hb {0};
     bool connection_established {false};
     unsigned long last_connection_established {-1UL / 2UL};
     bool connection_closing {false};
     ReceiveTXTcallback receiveTXTcallback = [] (const char *, size_t) {return false;};
-
-    bool credentials_changed {true}; //set credentials to be reloaded
-    void reload_credentials() {
-        url.clear();
-        basic_auth64.clear();
-
-        if (backend_url.empty()) {
-            MO_DBG_DEBUG("empty URL closes connection");
-            return;
-        } else {
-            url = backend_url;
-
-            if (url.back() != '/' && !cb_id.empty()) {
-                url.append("/");
-            }
-
-            url.append(cb_id);
-        }
-
-        if (!auth_key.empty()) {
-            std::string token = cb_id + ":" + auth_key;
-
-            MO_DBG_DEBUG("auth Token=%s", token.c_str());
-
-            unsigned int base64_length = encode_base64_length(token.length());
-            std::vector<unsigned char> base64 (base64_length + 1);
-
-            // encode_base64() places a null terminator automatically, because the output is a string
-            base64_length = encode_base64((const unsigned char*) token.c_str(), token.length(), &base64[0]);
-
-            MO_DBG_DEBUG("auth64 len=%u, auth64 Token=%s", base64_length, &base64[0]);
-
-            basic_auth64 = (const char*) &base64[0];
-        } else {
-            MO_DBG_DEBUG("no authentication");
-            (void) 0;
-        }
-    }
 
     void maintainWsConn() {
         if (mocpp_tick_ms() - last_status_dbg_msg >= DEBUG_MSG_INTERVAL) {
@@ -87,21 +45,21 @@ private:
             //WS successfully connected?
             if (!isConnectionOpen()) {
                 MO_DBG_DEBUG("WS unconnected");
-            } else if (mocpp_tick_ms() - last_recv >= (ws_ping_interval && *ws_ping_interval > 0 ? (*ws_ping_interval * 1000UL) : 0UL) + WS_UNRESPONSIVE_THRESHOLD_MS) {
+            } else if (mocpp_tick_ms() - last_recv >= (ws_ping_interval_int && ws_ping_interval_int->getInt() > 0 ? (ws_ping_interval_int->getInt() * 1000UL) : 0UL) + WS_UNRESPONSIVE_THRESHOLD_MS) {
                 //WS connected but unresponsive
                 MO_DBG_DEBUG("WS unresponsive");
             }
         }
 
         if (websocket && isConnectionOpen() &&
-                stale_timeout && *stale_timeout > 0 && mocpp_tick_ms() - last_recv >= (*stale_timeout * 1000UL)) {
+                stale_timeout_int && stale_timeout_int->getInt() > 0 && mocpp_tick_ms() - last_recv >= (stale_timeout_int->getInt() * 1000UL)) {
             MO_DBG_INFO("connection %s -- stale, reconnect", url.c_str());
             reconnect();
             return;
         }
 
         if (websocket && isConnectionOpen() &&
-                ws_ping_interval && *ws_ping_interval > 0 && mocpp_tick_ms() - last_hb >= (*ws_ping_interval * 1000UL)) {
+                ws_ping_interval_int && ws_ping_interval_int->getInt() > 0 && mocpp_tick_ms() - last_hb >= (ws_ping_interval_int->getInt() * 1000UL)) {
             last_hb = mocpp_tick_ms();
             MO_DBG_VERBOSE("omit heartbeat");
         }
@@ -110,17 +68,12 @@ private:
             return;
         }
 
-        if (credentials_changed) {
-            reload_credentials();
-            credentials_changed = false;
-        }
-
         if (url.empty()) {
             //cannot open OCPP connection: credentials missing
             return;
         }
 
-        if (reconnect_interval && *reconnect_interval > 0 && mocpp_tick_ms() - last_reconnection_attempt < (*reconnect_interval * 1000UL)) {
+        if (reconnect_interval_int && reconnect_interval_int->getInt() > 0 && mocpp_tick_ms() - last_reconnection_attempt < (reconnect_interval_int->getInt() * 1000UL)) {
             return;
         }
 
@@ -206,33 +159,37 @@ private:
         }
     }
 
+    void reconnect() {
+        if (!websocket) {
+            return;
+        }
+        auto ret = emscripten_websocket_close(websocket, 1000, "reconnect");
+        if (ret < 0) {
+            MO_DBG_ERR("emscripten_websocket_close: %i", ret);
+        }
+        setConnectionOpen(false);
+    }
+
 public:
     WasmOcppConnection(
-            const char *backend_url_default, 
-            const char *charge_box_id_default,
-            const char *auth_key_default) {
+            const char *backend_url_factory, 
+            const char *charge_box_id_factory,
+            const char *auth_key_factory) {
 
-        setting_backend_url = declareConfiguration<const char*>(
-            MO_CONFIG_EXT_PREFIX "BackendUrl", backend_url_default, CONFIGURATION_VOLATILE, true, true, true);
-        setting_cb_id = declareConfiguration<const char*>(
-            MO_CONFIG_EXT_PREFIX "ChargeBoxId", charge_box_id_default, CONFIGURATION_VOLATILE, true, true, true);
-        setting_auth_key = declareConfiguration<const char*>(
-            "AuthorizationKey", auth_key_default, CONFIGURATION_VOLATILE, true, true, true);
-        ws_ping_interval = declareConfiguration<int>(
+        setting_backend_url_str = declareConfiguration<const char*>(
+            MO_CONFIG_EXT_PREFIX "BackendUrl", backend_url_factory, CONFIGURATION_VOLATILE, true, true);
+        setting_cb_id_str = declareConfiguration<const char*>(
+            MO_CONFIG_EXT_PREFIX "ChargeBoxId", charge_box_id_factory, CONFIGURATION_VOLATILE, true, true);
+        setting_auth_key_str = declareConfiguration<const char*>(
+            "AuthorizationKey", auth_key_factory, CONFIGURATION_VOLATILE, true, true);
+        ws_ping_interval_int = declareConfiguration<int>(
             "WebSocketPingInterval", 5, CONFIGURATION_VOLATILE);
-        reconnect_interval = declareConfiguration<int>(
+        reconnect_interval_int = declareConfiguration<int>(
             MO_CONFIG_EXT_PREFIX "ReconnectInterval", 10, CONFIGURATION_VOLATILE);
-        stale_timeout = declareConfiguration<int>(
+        stale_timeout_int = declareConfiguration<int>(
             MO_CONFIG_EXT_PREFIX "StaleTimeout", 300, CONFIGURATION_VOLATILE);
 
-        configuration_save();
-
-        backend_url = setting_backend_url && *setting_backend_url ? *setting_backend_url : 
-            (backend_url_default ? backend_url_default : "");
-        cb_id = setting_cb_id && *setting_cb_id ? *setting_cb_id : 
-            (charge_box_id_default ? charge_box_id_default : "");
-        auth_key = setting_auth_key && *setting_auth_key ? *setting_auth_key : 
-            (auth_key_default ? auth_key_default : "");
+        reloadConfigs(); //load WS creds with configs values
 
         MO_DBG_DEBUG("connection initialized");
 
@@ -250,12 +207,12 @@ public:
         maintainWsConn();
     }
 
-    bool sendTXT(std::string &out) override {
+    bool sendTXT(const char *msg, size_t length) override {
         if (!websocket || !isConnectionOpen()) {
             return false;
         }
 
-        if (auto ret = emscripten_websocket_send_utf8_text(websocket, out.c_str()) < 0) {
+        if (auto ret = emscripten_websocket_send_utf8_text(websocket, msg) < 0) {
             MO_DBG_ERR("emscripten_websocket_send_utf8_text: %i", ret);
             return false;
         }
@@ -276,16 +233,11 @@ public:
             MO_DBG_ERR("invalid argument");
             return;
         }
-        backend_url = backend_url_cstr;
 
-        if (setting_backend_url) {
-            *setting_backend_url = backend_url_cstr;
+        if (setting_backend_url_str) {
+            setting_backend_url_str->setString(backend_url_cstr);
             configuration_save();
         }
-
-        credentials_changed = true; //reload composed credentials when reconnecting the next time
-
-        reconnect();
     }
 
     void setChargeBoxId(const char *cb_id_cstr) {
@@ -293,16 +245,11 @@ public:
             MO_DBG_ERR("invalid argument");
             return;
         }
-        cb_id = cb_id_cstr;
 
-        if (setting_cb_id) {
-            *setting_cb_id = cb_id_cstr;
+        if (setting_cb_id_str) {
+            setting_cb_id_str->setString(cb_id_cstr);
             configuration_save();
         }
-
-        credentials_changed = true; //reload composed credentials when reconnecting the next time
-
-        reconnect();
     }
 
     void setAuthKey(const char *auth_key_cstr) {
@@ -310,33 +257,75 @@ public:
             MO_DBG_ERR("invalid argument");
             return;
         }
-        auth_key = auth_key_cstr;
 
-        if (setting_auth_key) {
-            *setting_auth_key = auth_key_cstr;
+        if (setting_auth_key_str) {
+            setting_auth_key_str->setString(auth_key_cstr);
             configuration_save();
         }
-
-        credentials_changed = true; //reload composed credentials when reconnecting the next time
-
-        reconnect();
     }
-    
-    void reconnect() {
-        if (!websocket) {
+
+    void reloadConfigs() {
+
+        reconnect(); //closes WS connection; will be reopened in next maintainWsConn execution
+
+        /*
+        * reload WS credentials from configs
+        */
+        if (setting_backend_url_str) {
+            backend_url = setting_backend_url_str->getString();
+        }
+
+        if (setting_cb_id_str) {
+            cb_id = setting_cb_id_str->getString();
+        }
+
+        if (setting_auth_key_str) {
+            auth_key = setting_auth_key_str->getString();
+        }
+
+        /*
+        * determine new URL and auth token with updated WS credentials
+        */
+
+        url.clear();
+        basic_auth64.clear();
+
+        if (backend_url.empty()) {
+            MO_DBG_DEBUG("empty URL closes connection");
             return;
+        } else {
+            url = backend_url;
+
+            if (url.back() != '/' && !cb_id.empty()) {
+                url.append("/");
+            }
+
+            url.append(cb_id);
         }
-        auto ret = emscripten_websocket_close(websocket, 1000, "reconnect");
-        if (ret < 0) {
-            MO_DBG_ERR("emscripten_websocket_close: %i", ret);
+
+        if (!auth_key.empty()) {
+            std::string token = cb_id + ":" + auth_key;
+
+            MO_DBG_DEBUG("auth Token=%s", token.c_str());
+
+            unsigned int base64_length = encode_base64_length(token.length());
+            std::vector<unsigned char> base64 (base64_length + 1);
+
+            // encode_base64() places a null terminator automatically, because the output is a string
+            base64_length = encode_base64((const unsigned char*) token.c_str(), token.length(), &base64[0]);
+
+            MO_DBG_DEBUG("auth64 len=%u, auth64 Token=%s", base64_length, &base64[0]);
+
+            basic_auth64 = (const char*) &base64[0];
+        } else {
+            MO_DBG_DEBUG("no authentication");
+            (void) 0;
         }
-        setConnectionOpen(false);
     }
 
     const char *getBackendUrl() {return backend_url.c_str();}
     const char *getChargeBoxId() {return cb_id.c_str();}
     const char *getAuthKey() {return auth_key.c_str();}
-    const char *getCaCert() {return ca_cert.c_str();}
 
     const char *getUrl() {return url.c_str();}
 
@@ -420,11 +409,12 @@ extern "C" char* mocpp_wasm_api_call(const char *endpoint, const char *method, c
             if (request.containsKey("authorizationKey")) {
                 wasm_ocpp_connection_instance->setAuthKey(request["authorizationKey"] | "");
             }
+            wasm_ocpp_connection_instance->reloadConfigs();
             if (request.containsKey("pingInterval")) {
-                *webSocketPingInterval = request["pingInterval"] | 0;
+                webSocketPingInterval->setInt(request["pingInterval"] | 0);
             }
             if (request.containsKey("reconnectInterval")) {
-                *reconnectInterval = request["reconnectInterval"] | 0;
+                reconnectInterval->setInt(request["reconnectInterval"] | 0);
             }
             if (request.containsKey("dnsUrl")) {
                 MO_DBG_WARN("dnsUrl not implemented");
@@ -438,13 +428,13 @@ extern "C" char* mocpp_wasm_api_call(const char *endpoint, const char *method, c
         response["chargeBoxId"] = wasm_ocpp_connection_instance->getChargeBoxId();
         response["authorizationKey"] = wasm_ocpp_connection_instance->getAuthKey();
 
-        response["pingInterval"] = webSocketPingInterval ? (int) *webSocketPingInterval : 0;
-        response["reconnectInterval"] = reconnectInterval ? (int) *reconnectInterval : 0;
+        response["pingInterval"] = webSocketPingInterval ? webSocketPingInterval->getInt() : 0;
+        response["reconnectInterval"] = reconnectInterval ? reconnectInterval->getInt() : 0;
         serializeJson(response, wasm_resp_buf, MO_WASM_RESP_BUF_SIZE);
         return wasm_resp_buf;
     }
     
-    //all other endpoints
+    //forward all other endpoints to main API
     int status = mocpp_api_call(endpoint, method_parsed, body, wasm_resp_buf, MO_WASM_RESP_BUF_SIZE);
 
     if (status == 200) {
