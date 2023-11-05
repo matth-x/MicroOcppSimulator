@@ -19,7 +19,7 @@ jobs:
       with:
         submodules: recursive
     - name: Set up emscripten
-    - uses: mymindstorm/setup-emsdk@v11
+      uses: mymindstorm/setup-emsdk@v11
     - name: Verify
       run: emcc -v
     - name: Generate CMake files
