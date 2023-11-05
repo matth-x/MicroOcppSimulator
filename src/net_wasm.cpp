@@ -411,10 +411,10 @@ extern "C" char* mocpp_wasm_api_call(const char *endpoint, const char *method, c
             }
             wasm_ocpp_connection_instance->reloadConfigs();
             if (request.containsKey("pingInterval")) {
-                *webSocketPingInterval = request["pingInterval"] | 0;
+                webSocketPingInterval->setInt(request["pingInterval"] | 0);
             }
             if (request.containsKey("reconnectInterval")) {
-                *reconnectInterval = request["reconnectInterval"] | 0;
+                reconnectInterval->setInt(request["reconnectInterval"] | 0);
             }
             if (request.containsKey("dnsUrl")) {
                 MO_DBG_WARN("dnsUrl not implemented");
@@ -428,8 +428,8 @@ extern "C" char* mocpp_wasm_api_call(const char *endpoint, const char *method, c
         response["chargeBoxId"] = wasm_ocpp_connection_instance->getChargeBoxId();
         response["authorizationKey"] = wasm_ocpp_connection_instance->getAuthKey();
 
-        response["pingInterval"] = webSocketPingInterval ? (int) *webSocketPingInterval : 0;
-        response["reconnectInterval"] = reconnectInterval ? (int) *reconnectInterval : 0;
+        response["pingInterval"] = webSocketPingInterval ? webSocketPingInterval->getInt() : 0;
+        response["reconnectInterval"] = reconnectInterval ? reconnectInterval->getInt() : 0;
         serializeJson(response, wasm_resp_buf, MO_WASM_RESP_BUF_SIZE);
         return wasm_resp_buf;
     }
