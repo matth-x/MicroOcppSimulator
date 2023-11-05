@@ -1,5 +1,9 @@
 # <img src="https://user-images.githubusercontent.com/63792403/133922028-fefc8abb-fde9-460b-826f-09a458502d17.png" alt="Icon" height="24"> &nbsp; MicroOcppSimulator
 
+[![Build (Ubuntu)](https://github.com/matth-x/MicroOcppSimulator/workflows/Build%20%28Ubuntu%29/badge.svg)]((https://github.com/matth-x/MicroOcppSimulator/actions))
+[![Build (Docker)](https://github.com/matth-x/MicroOcppSimulator/workflows/Build%20%28Docker%29/badge.svg)]((https://github.com/matth-x/MicroOcppSimulator/actions))
+[![Build (WebAssembly)](https://github.com/matth-x/MicroOcppSimulator/workflows/Build%20%28WebAssembly%29/badge.svg)]((https://github.com/matth-x/MicroOcppSimulator/actions))
+
 **Formerly ArduinoOcppSimulator**: *see the statement on the former ArduinoOcpp [project site](https://github.com/matth-x/MicroOcpp) for more details.*
 
 Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu, WSL, or MSYS2. **New** (August 2023): the Simulator has been ported to WebAssembly and runs natively in the browser too: [Try it](https://demo.micro-ocpp.com/)
