@@ -35,7 +35,10 @@ add_compile_definitions(
 
 add_executable(mo_simulator ${MO_SIM_SRC} ${MO_SIM_MG_SRC})
 
-find_package(OpenSSL REQUIRED)
+# find OpenSSL (skip for WebAssembly)
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    find_package(OpenSSL REQUIRED)
+endif()
 
 target_include_directories(mo_simulator PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/ArduinoJson/src"
