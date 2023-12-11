@@ -15,10 +15,10 @@ WORKDIR /MicroOcppSimulator
 # Copy your application files to the container's working directory
 COPY . .
 
-RUN git clone --recurse-submodules https://github.com/matth-x/MicroOcppSimulator
-RUN cd MicroOcppSimulator && mkdir build && mkdir mo_store
+RUN git submodule init && git submodule update
+RUN mkdir mo_store
 RUN cmake -S . -B ./build
-RUN cmake --build ./build -j 16 --target mo_simulator
+RUN cmake --build ./build -j 16 --target mo_simulator -j 16
 
 # Grant execute permissions to the shell script
 RUN chmod +x /MicroOcppSimulator/build/mo_simulator
