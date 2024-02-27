@@ -31,6 +31,7 @@ add_compile_definitions(
     MO_TRAFFIC_OUT
     MO_DBG_LEVEL=MO_DL_INFO
     MO_FILENAME_PREFIX="./mo_store/"
+    MO_ENABLE_V201=1
 )
 
 add_executable(mo_simulator ${MO_SIM_SRC} ${MO_SIM_MG_SRC})

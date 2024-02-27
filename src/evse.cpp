@@ -3,7 +3,10 @@
 #include <MicroOcpp/Core/Context.h>
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/Transactions/Transaction.h>
+#include <MicroOcpp/Model/Transactions/TransactionService.h>
+#include <MicroOcpp/Model/Variables/VariableService.h>
 #include <MicroOcpp/Operations/StatusNotification.h>
+#include <MicroOcpp/Version.h>
 #include <MicroOcpp/Debug.h>
 #include <cstring>
 #include <cstdlib>
@@ -23,6 +26,17 @@ MicroOcpp::Connector *getConnector(unsigned int connectorId) {
 }
 
 void Evse::setup() {
+
+#if MO_ENABLE_V201
+    if (auto context = getOcppContext()) {
+        if (context->getVersion().major == 2) {
+            if (auto varService = context->getModel().getVariableService()) {
+                varService->declareVariable<bool>("AuthCtrlr", "LocalPreAuthorize", false, MO_VARIABLE_VOLATILE, MicroOcpp::Variable::Mutability::ReadOnly);
+            }
+        }
+    }
+#endif
+
     auto connector = getConnector(connectorId);
     if (!connector) {
         MO_DBG_ERR("invalid state");
@@ -54,6 +68,28 @@ void Evse::setup() {
     connector->setEvseReadyInput([this] () -> bool {
         return trackEvseReadyBool->getBool();
     });
+
+#if MO_ENABLE_V201
+    if (auto context = getOcppContext()) {
+        if (context->getVersion().major == 2) {
+            if (auto txService = context->getModel().getTransactionService()) {
+                if (auto evse = txService->getEvse(connectorId)) {
+                    evse->setConnectorPluggedInput([this] () -> bool {
+                        return trackEvPluggedBool->getBool(); //return if J1772 is in State B or C
+                    });
+
+                    evse->setEvReadyInput([this] () -> bool {
+                        return trackEvReadyBool->getBool(); //return if J1772 is in State C
+                    });
+
+                    evse->setEvseReadyInput([this] () -> bool {
+                        return trackEvseReadyBool->getBool();
+                    });
+                }
+            }
+        }
+    }
+#endif
 
     connector->addErrorCodeInput([this] () -> const char* {
         const char *errorCode = nullptr; //if error is present, point to error code; any number of error code samplers can be added in this project
@@ -109,13 +145,22 @@ void Evse::loop() {
     if (auto connector = getConnector(connectorId)) {
         auto curStatus = connector->getStatus();
 
-        if (status.compare(MicroOcpp::Ocpp16::cstrFromOcppEveState(curStatus))) {
-            status = MicroOcpp::Ocpp16::cstrFromOcppEveState(curStatus);
+        if (status.compare(MicroOcpp::cstrFromOcppEveState(curStatus))) {
+            status = MicroOcpp::cstrFromOcppEveState(curStatus);
         }
     }
 
-
     bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
+
+#if MO_ENABLE_V201
+    if (auto context = getOcppContext()) {
+        if (context->getVersion().major == 2) {
+            if (auto varService = context->getModel().getVariableService()) {
+                simulate_isCharging = trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
+            }
+        }
+    }
+#endif
 
     simulate_isCharging &= limit_power >= 720.f; //minimum charging current is 6A (720W for 120V grids) according to J1772
 
@@ -145,6 +190,23 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         MO_DBG_ERR("invalid state");
         return;
     }
+
+#if MO_ENABLE_V201
+    if (auto context = getOcppContext()) {
+        if (context->getVersion().major == 2) {
+            if (auto txService = context->getModel().getTransactionService()) {
+                if (auto evse = txService->getEvse(connectorId)) {
+                    if (evse->getAuthorization()) {
+                        evse->endAuthorization(uid_cstr);
+                    } else {
+                        evse->beginAuthorization(uid_cstr);
+                    }
+                    return;
+                }
+            }
+        }
+    }
+#endif
 
     if (connector->getTransaction() && connector->getTransaction()->isActive()) {
         if (!uid.compare(connector->getTransaction()->getIdTag())) {

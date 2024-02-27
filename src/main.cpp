@@ -41,8 +41,10 @@ MicroOcpp::Connection *conn = nullptr;
  */
 void app_setup(MicroOcpp::Connection& connection, std::shared_ptr<MicroOcpp::FilesystemAdapter> filesystem) {
     mocpp_initialize(connection,
-            ChargerCredentials("Demo Charger", "My Company Ltd."),
-            filesystem);
+            ChargerCredentials::v201("Demo Charger", "My Company Ltd."),
+            filesystem,
+            false,
+            MicroOcpp::ProtocolVersion(2,0,1));
 
     for (unsigned int i = 0; i < connectors.size(); i++) {
         connectors[i].setup();
@@ -74,8 +76,9 @@ int main() {
         "charger-01",
         "",
         "",
-        filesystem);
-    
+        filesystem,
+        MicroOcpp::ProtocolVersion(2,0,1));
+
     server_initialize(osock);
     app_setup(*osock, filesystem);
 
