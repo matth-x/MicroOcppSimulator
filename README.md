@@ -1,12 +1,10 @@
-# <img src="https://user-images.githubusercontent.com/63792403/133922028-fefc8abb-fde9-460b-826f-09a458502d17.png" alt="Icon" height="24"> &nbsp; MicroOcppSimulator
+# <img src="https://github.com/matth-x/MicroOcpp/assets/63792403/1c49d1ad-7afc-48d3-a54e-9aef2d4886db" alt="Icon" height="24"> &nbsp; MicroOcppSimulator
 
 [![Build (Ubuntu)](https://github.com/matth-x/MicroOcppSimulator/workflows/Ubuntu/badge.svg)]((https://github.com/matth-x/MicroOcppSimulator/actions))
 [![Build (Docker)](https://github.com/matth-x/MicroOcppSimulator/workflows/Docker/badge.svg)]((https://github.com/matth-x/MicroOcppSimulator/actions))
 [![Build (WebAssembly)](https://github.com/matth-x/MicroOcppSimulator/workflows/WebAssembly/badge.svg)]((https://github.com/matth-x/MicroOcppSimulator/actions))
 
-**Formerly ArduinoOcppSimulator**: *see the statement on the former ArduinoOcpp [project site](https://github.com/matth-x/MicroOcpp) for more details.*
-
-Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu, WSL, or MSYS2. **New** (August 2023): the Simulator has been ported to WebAssembly and runs natively in the browser too: [Try it](https://demo.micro-ocpp.com/)
+Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu, WSL, WebAssembly or MSYS2. Online demo: [Try it](https://demo.micro-ocpp.com/)
 
 [![Screenshot](https://github.com/agruenb/arduino-ocpp-dashboard/blob/master/docs/img/status_page.png)](https://demo.micro-ocpp.com/)
 
@@ -60,7 +58,6 @@ Navigate to the copy of the Simulator, prepare some necessary local folders and 
 
 ```shell
 cd MicroOcppSimulator
-mkdir build
 mkdir mo_store
 cmake -S . -B ./build
 cmake --build ./build -j 16 --target mo_simulator
