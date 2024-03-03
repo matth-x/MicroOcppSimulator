@@ -196,7 +196,7 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         if (context->getVersion().major == 2) {
             if (auto txService = context->getModel().getTransactionService()) {
                 if (auto evse = txService->getEvse(connectorId)) {
-                    if (evse->getAuthorization()) {
+                    if (evse->getTransaction() && evse->getTransaction()->idToken.get()) {
                         evse->endAuthorization(uid_cstr);
                     } else {
                         evse->beginAuthorization(uid_cstr);
