@@ -54,11 +54,10 @@ Navigate to the preferred installation directory or just to the home folder. Clo
 git clone --recurse-submodules https://github.com/matth-x/MicroOcppSimulator
 ```
 
-Navigate to the copy of the Simulator, prepare some necessary local folders and build:
+Navigate to the copy of the Simulator and build:
 
 ```shell
 cd MicroOcppSimulator
-mkdir mo_store
 cmake -S . -B ./build
 cmake --build ./build -j 16 --target mo_simulator
 ```

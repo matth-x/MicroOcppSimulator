@@ -2,5 +2,6 @@
 *.exe
 *.obj
 build_and_run.sh
-mo_store
+mo_store/*
+!mo_store/README.md
 build

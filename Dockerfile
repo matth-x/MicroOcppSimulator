@@ -16,7 +16,6 @@ WORKDIR /MicroOcppSimulator
 COPY . .
 
 RUN git submodule init && git submodule update
-RUN mkdir mo_store
 RUN cmake -S . -B ./build
 RUN cmake --build ./build -j 16 --target mo_simulator -j 16
 
