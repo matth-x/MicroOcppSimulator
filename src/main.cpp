@@ -1,3 +1,7 @@
+// matth-x/MicroOcppSimulator
+// Copyright Matthias Akstaller 2022 - 2024
+// MIT License
+
 #include <iostream>
 
 #include <MicroOcpp.h>
@@ -9,6 +13,8 @@ std::array<Evse, MO_NUMCONNECTORS - 1> connectors {{1,2}};
 #else
 std::array<Evse, MO_NUMCONNECTORS - 1> connectors {{1}};
 #endif
+
+bool g_isOcpp201 = false;
 
 #define MO_NETLIB_MONGOOSE 1
 #define MO_NETLIB_WASM 2
@@ -39,10 +45,36 @@ MicroOcpp::Connection *conn = nullptr;
 /*
  * Setup MicroOcpp and API
  */
+void load_ocpp_version(std::shared_ptr<MicroOcpp::FilesystemAdapter> filesystem) {
+
+    MicroOcpp::configuration_init(filesystem);
+
+    #if MO_ENABLE_V201
+    {
+        auto protocolVersion_stored = MicroOcpp::declareConfiguration<const char*>("OcppVersion", "1.6", SIMULATOR_FN, false, false, false);
+        MicroOcpp::configuration_load(SIMULATOR_FN);
+        if (!strcmp(protocolVersion_stored->getString(), "2.0.1")) {
+            //select OCPP 2.0.1
+            g_isOcpp201 = true;
+            return;
+        }
+    }
+    #endif //MO_ENABLE_V201
+
+    g_isOcpp201 = false;
+}
+
 void app_setup(MicroOcpp::Connection& connection, std::shared_ptr<MicroOcpp::FilesystemAdapter> filesystem) {
     mocpp_initialize(connection,
-            ChargerCredentials("Demo Charger", "My Company Ltd."),
-            filesystem);
+            g_isOcpp201 ?
+                ChargerCredentials::v201("MicroOcpp Simulator", "MicroOcpp") :
+                ChargerCredentials("MicroOcpp Simulator", "MicroOcpp"),
+            filesystem,
+            false,
+            g_isOcpp201 ?
+                MicroOcpp::ProtocolVersion{2,0,1} :
+                MicroOcpp::ProtocolVersion{1,6}
+            );
 
     for (unsigned int i = 0; i < connectors.size(); i++) {
         connectors[i].setup();
@@ -69,13 +101,19 @@ int main() {
 
     auto filesystem = MicroOcpp::makeDefaultFilesystemAdapter(MicroOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
 
+    load_ocpp_version(filesystem);
+
     osock = new MicroOcpp::MOcppMongooseClient(&mgr,
         "ws://echo.websocket.events",
         "charger-01",
         "",
         "",
-        filesystem);
-    
+        filesystem,
+        g_isOcpp201 ?
+            MicroOcpp::ProtocolVersion{2,0,1} :
+            MicroOcpp::ProtocolVersion{1,6}
+        );
+
     server_initialize(osock);
     app_setup(*osock, filesystem);
 

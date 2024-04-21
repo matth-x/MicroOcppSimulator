@@ -1,14 +1,19 @@
+// matth-x/MicroOcppSimulator
+// Copyright Matthias Akstaller 2022 - 2024
+// MIT License
+
 #include "evse.h"
 #include <MicroOcpp.h>
 #include <MicroOcpp/Core/Context.h>
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/Transactions/Transaction.h>
+#include <MicroOcpp/Model/Transactions/TransactionService.h>
+#include <MicroOcpp/Model/Variables/VariableService.h>
 #include <MicroOcpp/Operations/StatusNotification.h>
+#include <MicroOcpp/Version.h>
 #include <MicroOcpp/Debug.h>
 #include <cstring>
 #include <cstdlib>
-
-#define SIMULATOR_FN MO_FILENAME_PREFIX "simulator.jsn"
 
 Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
@@ -23,6 +28,21 @@ MicroOcpp::Connector *getConnector(unsigned int connectorId) {
 }
 
 void Evse::setup() {
+
+#if MO_ENABLE_V201
+    if (auto context = getOcppContext()) {
+        if (context->getVersion().major == 2) {
+            //load some example variables for testing
+
+            if (auto varService = context->getModel().getVariableService()) {
+                varService->declareVariable<bool>("AuthCtrlr", "LocalAuthorizeOffline", false, MO_VARIABLE_VOLATILE);
+                varService->declareVariable<int>("OCPPCommCtrlr", "OfflineThreshold", false, MO_VARIABLE_VOLATILE);
+                varService->declareVariable<bool>("TxCtrlr", "StopTxOnInvalidId", false, MO_VARIABLE_VOLATILE);
+            }
+        }
+    }
+#endif
+
     auto connector = getConnector(connectorId);
     if (!connector) {
         MO_DBG_ERR("invalid state");
@@ -43,22 +63,22 @@ void Evse::setup() {
 
     MicroOcpp::configuration_load(SIMULATOR_FN);
 
-    connector->setConnectorPluggedInput([this] () -> bool {
+    setConnectorPluggedInput([this] () -> bool {
         return trackEvPluggedBool->getBool(); //return if J1772 is in State B or C
-    });
+    }, connectorId);
 
-    connector->setEvReadyInput([this] () -> bool {
+    setEvReadyInput([this] () -> bool {
         return trackEvReadyBool->getBool(); //return if J1772 is in State C
-    });
+    }, connectorId);
 
-    connector->setEvseReadyInput([this] () -> bool {
+    setEvseReadyInput([this] () -> bool {
         return trackEvseReadyBool->getBool();
-    });
+    }, connectorId);
 
-    connector->addErrorCodeInput([this] () -> const char* {
+    addErrorCodeInput([this] () -> const char* {
         const char *errorCode = nullptr; //if error is present, point to error code; any number of error code samplers can be added in this project
         return errorCode;
-    });
+    }, connectorId);
 
     setEnergyMeterInput([this] () -> float {
         return simulate_energy;
@@ -109,11 +129,10 @@ void Evse::loop() {
     if (auto connector = getConnector(connectorId)) {
         auto curStatus = connector->getStatus();
 
-        if (status.compare(MicroOcpp::Ocpp16::cstrFromOcppEveState(curStatus))) {
-            status = MicroOcpp::Ocpp16::cstrFromOcppEveState(curStatus);
+        if (status.compare(MicroOcpp::cstrFromOcppEveState(curStatus))) {
+            status = MicroOcpp::cstrFromOcppEveState(curStatus);
         }
     }
-
 
     bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
 
@@ -145,6 +164,23 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         MO_DBG_ERR("invalid state");
         return;
     }
+
+#if MO_ENABLE_V201
+    if (auto context = getOcppContext()) {
+        if (context->getVersion().major == 2) {
+            if (auto txService = context->getModel().getTransactionService()) {
+                if (auto evse = txService->getEvse(connectorId)) {
+                    if (evse->getTransaction() && evse->getTransaction()->isAuthorized) {
+                        evse->endAuthorization(uid_cstr);
+                    } else {
+                        evse->beginAuthorization(uid_cstr);
+                    }
+                    return;
+                }
+            }
+        }
+    }
+#endif
 
     if (connector->getTransaction() && connector->getTransaction()->isActive()) {
         if (!uid.compare(connector->getTransaction()->getIdTag())) {

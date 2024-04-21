@@ -25,7 +25,7 @@ bool str_match(const char *query, const char *pattern) {
 
 int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *body, char *resp_body, size_t resp_body_size) {
     
-    MO_DBG_DEBUG("process %s, %s: %s",
+    MO_DBG_VERBOSE("process %s, %s: %s",
             endpoint,
             method == MicroOcpp::Method::GET ? "GET" :
             method == MicroOcpp::Method::POST ? "POST" : "error",
