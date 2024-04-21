@@ -1,3 +1,7 @@
+// matth-x/MicroOcppSimulator
+// Copyright Matthias Akstaller 2022 - 2024
+// MIT License
+
 #include "evse.h"
 #include <MicroOcpp.h>
 #include <MicroOcpp/Core/Context.h>
@@ -10,8 +14,6 @@
 #include <MicroOcpp/Debug.h>
 #include <cstring>
 #include <cstdlib>
-
-#define SIMULATOR_FN MO_FILENAME_PREFIX "simulator.jsn"
 
 Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
@@ -30,8 +32,12 @@ void Evse::setup() {
 #if MO_ENABLE_V201
     if (auto context = getOcppContext()) {
         if (context->getVersion().major == 2) {
+            //load some example variables for testing
+
             if (auto varService = context->getModel().getVariableService()) {
-                varService->declareVariable<bool>("AuthCtrlr", "LocalPreAuthorize", false, MO_VARIABLE_VOLATILE, MicroOcpp::Variable::Mutability::ReadOnly);
+                varService->declareVariable<bool>("AuthCtrlr", "LocalAuthorizeOffline", false, MO_VARIABLE_VOLATILE);
+                varService->declareVariable<int>("OCPPCommCtrlr", "OfflineThreshold", false, MO_VARIABLE_VOLATILE);
+                varService->declareVariable<bool>("TxCtrlr", "StopTxOnInvalidId", false, MO_VARIABLE_VOLATILE);
             }
         }
     }
@@ -57,44 +63,22 @@ void Evse::setup() {
 
     MicroOcpp::configuration_load(SIMULATOR_FN);
 
-    connector->setConnectorPluggedInput([this] () -> bool {
+    setConnectorPluggedInput([this] () -> bool {
         return trackEvPluggedBool->getBool(); //return if J1772 is in State B or C
-    });
+    }, connectorId);
 
-    connector->setEvReadyInput([this] () -> bool {
+    setEvReadyInput([this] () -> bool {
         return trackEvReadyBool->getBool(); //return if J1772 is in State C
-    });
+    }, connectorId);
 
-    connector->setEvseReadyInput([this] () -> bool {
+    setEvseReadyInput([this] () -> bool {
         return trackEvseReadyBool->getBool();
-    });
+    }, connectorId);
 
-#if MO_ENABLE_V201
-    if (auto context = getOcppContext()) {
-        if (context->getVersion().major == 2) {
-            if (auto txService = context->getModel().getTransactionService()) {
-                if (auto evse = txService->getEvse(connectorId)) {
-                    evse->setConnectorPluggedInput([this] () -> bool {
-                        return trackEvPluggedBool->getBool(); //return if J1772 is in State B or C
-                    });
-
-                    evse->setEvReadyInput([this] () -> bool {
-                        return trackEvReadyBool->getBool(); //return if J1772 is in State C
-                    });
-
-                    evse->setEvseReadyInput([this] () -> bool {
-                        return trackEvseReadyBool->getBool();
-                    });
-                }
-            }
-        }
-    }
-#endif
-
-    connector->addErrorCodeInput([this] () -> const char* {
+    addErrorCodeInput([this] () -> const char* {
         const char *errorCode = nullptr; //if error is present, point to error code; any number of error code samplers can be added in this project
         return errorCode;
-    });
+    }, connectorId);
 
     setEnergyMeterInput([this] () -> float {
         return simulate_energy;
@@ -152,16 +136,6 @@ void Evse::loop() {
 
     bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
 
-#if MO_ENABLE_V201
-    if (auto context = getOcppContext()) {
-        if (context->getVersion().major == 2) {
-            if (auto varService = context->getModel().getVariableService()) {
-                simulate_isCharging = trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
-            }
-        }
-    }
-#endif
-
     simulate_isCharging &= limit_power >= 720.f; //minimum charging current is 6A (720W for 120V grids) according to J1772
 
     if (simulate_isCharging) {
@@ -196,7 +170,7 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         if (context->getVersion().major == 2) {
             if (auto txService = context->getModel().getTransactionService()) {
                 if (auto evse = txService->getEvse(connectorId)) {
-                    if (evse->getTransaction() && evse->getTransaction()->idToken.get()) {
+                    if (evse->getTransaction() && evse->getTransaction()->isAuthorized) {
                         evse->endAuthorization(uid_cstr);
                     } else {
                         evse->beginAuthorization(uid_cstr);

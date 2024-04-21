@@ -1,3 +1,7 @@
+// matth-x/MicroOcppSimulator
+// Copyright Matthias Akstaller 2022 - 2024
+// MIT License
+
 #ifndef EVSE_H
 #define EVSE_H
 
@@ -5,6 +9,7 @@
 #include <string>
 #include <MicroOcpp/Core/Configuration.h>
 
+#define SIMULATOR_FN MO_FILENAME_PREFIX "simulator.jsn"
 
 class Evse {
 private:
