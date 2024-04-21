@@ -51,7 +51,7 @@ void load_ocpp_version(std::shared_ptr<MicroOcpp::FilesystemAdapter> filesystem)
 
     #if MO_ENABLE_V201
     {
-        auto protocolVersion_stored = MicroOcpp::declareConfiguration<const char*>("OCPP_Version", "1.6", SIMULATOR_FN, false, false, false);
+        auto protocolVersion_stored = MicroOcpp::declareConfiguration<const char*>("OcppVersion", "1.6", SIMULATOR_FN, false, false, false);
         MicroOcpp::configuration_load(SIMULATOR_FN);
         if (!strcmp(protocolVersion_stored->getString(), "2.0.1")) {
             //select OCPP 2.0.1
