@@ -1,8 +1,10 @@
 # matth-x/MicroOcpp
-# Copyright Matthias Akstaller 2019 - 2023
+# Copyright Matthias Akstaller 2019 - 2024
 # MIT License
 
 cmake_minimum_required(VERSION 3.13)
+
+set(CMAKE_CXX_STANDARD 11)
 
 set(MO_SIM_SRC
     src/evse.cpp
@@ -32,33 +34,63 @@ add_compile_definitions(
     MO_DBG_LEVEL=MO_DL_INFO
     MO_FILENAME_PREFIX="./mo_store/"
     MO_ENABLE_V201=1
+    MO_ENABLE_MBEDTLS=1
 )
 
 add_executable(mo_simulator ${MO_SIM_SRC} ${MO_SIM_MG_SRC})
 
-# find OpenSSL (skip for WebAssembly)
-if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-    find_package(OpenSSL REQUIRED)
-endif()
-
 target_include_directories(mo_simulator PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/ArduinoJson/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/mongoose"
-    "${OPENSSL_INCLUDE_DIR}"
 )
 
 target_compile_definitions(mo_simulator PUBLIC
     MO_NETLIB=MO_NETLIB_MONGOOSE
-    MG_ENABLE_OPENSSL=1
 )
 
 add_subdirectory(lib/MicroOcpp)
 target_link_libraries(mo_simulator PUBLIC MicroOcpp)
 
+add_subdirectory(lib/mbedtls)
+target_link_libraries(MicroOcpp PUBLIC 
+    mbedtls
+    mbedcrypto
+    mbedx509
+)
+
+if (MO_SIM_BUILD_USE_OPENSSL)
+
+    message("Use OpenSSL for WebSocket")
+
+    # find OpenSSL
+    find_package(OpenSSL REQUIRED)
+    target_include_directories(mo_simulator PUBLIC
+        "${OPENSSL_INCLUDE_DIR}"
+    )
+    target_link_libraries(mo_simulator PUBLIC
+        ${OPENSSL_LIBRARIES}
+    )
+    target_compile_definitions(mo_simulator PUBLIC
+        MG_ENABLE_OPENSSL=1
+    )
+
+else()
+
+    message("Use MbedTLS for WebSocket")
+
+    target_link_libraries(mo_simulator PUBLIC 
+        mbedtls
+        mbedcrypto
+        mbedx509
+    )
+    target_compile_definitions(mo_simulator PUBLIC
+        MG_ENABLE_MBEDTLS=1
+    )
+
+endif()
+
 add_subdirectory(lib/MicroOcppMongoose)
 target_link_libraries(mo_simulator PUBLIC MicroOcppMongoose)
-
-target_link_libraries(mo_simulator PUBLIC ${OPENSSL_LIBRARIES})
 
 # experimental WebAssembly port
 add_executable(mo_simulator_wasm ${MO_SIM_SRC} ${MO_SIM_WASM_SRC})
