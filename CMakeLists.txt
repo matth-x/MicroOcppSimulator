@@ -60,7 +60,7 @@ target_link_libraries(MicroOcpp PUBLIC
 
 if (MO_SIM_BUILD_USE_OPENSSL)
 
-    message("Use OpenSSL for WebSocket")
+    message("Using OpenSSL for WebSocket")
 
     # find OpenSSL
     find_package(OpenSSL REQUIRED)
@@ -76,7 +76,7 @@ if (MO_SIM_BUILD_USE_OPENSSL)
 
 else()
 
-    message("Use MbedTLS for WebSocket")
+    message("Using MbedTLS for WebSocket")
 
     target_link_libraries(mo_simulator PUBLIC 
         mbedtls
