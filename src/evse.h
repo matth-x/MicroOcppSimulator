@@ -1,6 +1,6 @@
 // matth-x/MicroOcppSimulator
 // Copyright Matthias Akstaller 2022 - 2024
-// MIT License
+// GPL-3.0 License
 
 #ifndef EVSE_H
 #define EVSE_H

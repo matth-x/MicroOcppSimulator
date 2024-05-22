@@ -1,6 +1,6 @@
-# matth-x/MicroOcpp
-# Copyright Matthias Akstaller 2019 - 2024
-# MIT License
+# matth-x/MicroOcppSimulator
+# Copyright Matthias Akstaller 2022 - 2024
+# GPL-3.0 License
 
 cmake_minimum_required(VERSION 3.13)
 

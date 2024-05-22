@@ -1,3 +1,7 @@
+// matth-x/MicroOcppSimulator
+// Copyright Matthias Akstaller 2022 - 2024
+// GPL-3.0 License
+
 #include "net_wasm.h"
 
 #include <string>
