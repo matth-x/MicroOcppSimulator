@@ -1,8 +1,10 @@
-# matth-x/MicroOcpp
-# Copyright Matthias Akstaller 2019 - 2023
-# MIT License
+# matth-x/MicroOcppSimulator
+# Copyright Matthias Akstaller 2022 - 2024
+# GPL-3.0 License
 
 cmake_minimum_required(VERSION 3.13)
+
+set(CMAKE_CXX_STANDARD 11)
 
 set(MO_SIM_SRC
     src/evse.cpp
@@ -32,33 +34,75 @@ add_compile_definitions(
     MO_DBG_LEVEL=MO_DL_INFO
     MO_FILENAME_PREFIX="./mo_store/"
     MO_ENABLE_V201=1
+    MO_ENABLE_MBEDTLS=1
 )
 
 add_executable(mo_simulator ${MO_SIM_SRC} ${MO_SIM_MG_SRC})
 
-# find OpenSSL (skip for WebAssembly)
-if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-    find_package(OpenSSL REQUIRED)
-endif()
-
 target_include_directories(mo_simulator PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/ArduinoJson/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/mongoose"
-    "${OPENSSL_INCLUDE_DIR}"
 )
 
 target_compile_definitions(mo_simulator PUBLIC
     MO_NETLIB=MO_NETLIB_MONGOOSE
-    MG_ENABLE_OPENSSL=1
 )
 
 add_subdirectory(lib/MicroOcpp)
 target_link_libraries(mo_simulator PUBLIC MicroOcpp)
 
+# disable some warnings for MbedTLS which cause compilation errors on WASM
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    add_compile_options(
+        -Wno-unused-but-set-variable
+        -Wno-documentation
+    )
+endif()
+
+# disable MbedTLS unit tests and test suites (not needed for the Simualtor)
+option(ENABLE_TESTING  "Build mbed TLS tests."    OFF)
+option(ENABLE_PROGRAMS "Build mbed TLS programs." OFF)
+
+add_subdirectory(lib/mbedtls)
+target_link_libraries(MicroOcpp PUBLIC 
+    mbedtls
+    mbedcrypto
+    mbedx509
+)
+
+if (MO_SIM_BUILD_USE_OPENSSL)
+
+    message("Using OpenSSL for WebSocket")
+
+    # find OpenSSL
+    find_package(OpenSSL REQUIRED)
+    target_include_directories(mo_simulator PUBLIC
+        "${OPENSSL_INCLUDE_DIR}"
+    )
+    target_link_libraries(mo_simulator PUBLIC
+        ${OPENSSL_LIBRARIES}
+    )
+    target_compile_definitions(mo_simulator PUBLIC
+        MG_ENABLE_OPENSSL=1
+    )
+
+else()
+
+    message("Using MbedTLS for WebSocket")
+
+    target_link_libraries(mo_simulator PUBLIC 
+        mbedtls
+        mbedcrypto
+        mbedx509
+    )
+    target_compile_definitions(mo_simulator PUBLIC
+        MG_ENABLE_MBEDTLS=1
+    )
+
+endif()
+
 add_subdirectory(lib/MicroOcppMongoose)
 target_link_libraries(mo_simulator PUBLIC MicroOcppMongoose)
-
-target_link_libraries(mo_simulator PUBLIC ${OPENSSL_LIBRARIES})
 
 # experimental WebAssembly port
 add_executable(mo_simulator_wasm ${MO_SIM_SRC} ${MO_SIM_WASM_SRC})

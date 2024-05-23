@@ -1,3 +1,7 @@
+// matth-x/MicroOcppSimulator
+// Copyright Matthias Akstaller 2022 - 2024
+// GPL-3.0 License
+
 #ifndef MO_NET_WASM_H
 #define MO_NET_WASM_H
 
