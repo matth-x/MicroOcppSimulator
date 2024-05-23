@@ -51,6 +51,10 @@ target_compile_definitions(mo_simulator PUBLIC
 add_subdirectory(lib/MicroOcpp)
 target_link_libraries(mo_simulator PUBLIC MicroOcpp)
 
+# disable MbedTLS unit tests and test suites (not needed for the Simualtor)
+option(ENABLE_TESTING  "Build mbed TLS tests."    OFF)
+option(ENABLE_PROGRAMS "Build mbed TLS programs." OFF)
+
 add_subdirectory(lib/mbedtls)
 target_link_libraries(MicroOcpp PUBLIC 
     mbedtls
