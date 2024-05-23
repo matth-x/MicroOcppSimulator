@@ -51,6 +51,14 @@ target_compile_definitions(mo_simulator PUBLIC
 add_subdirectory(lib/MicroOcpp)
 target_link_libraries(mo_simulator PUBLIC MicroOcpp)
 
+# disable some warnings for MbedTLS which cause compilation errors on WASM
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    add_compile_options(
+        -Wno-unused-but-set-variable
+        -Wno-documentation
+    )
+endif()
+
 # disable MbedTLS unit tests and test suites (not needed for the Simualtor)
 option(ENABLE_TESTING  "Build mbed TLS tests."    OFF)
 option(ENABLE_PROGRAMS "Build mbed TLS programs." OFF)
