@@ -1,3 +1,7 @@
+// matth-x/MicroOcppSimulator
+// Copyright Matthias Akstaller 2022 - 2024
+// GPL-3.0 License
+
 #include "net_mongoose.h"
 #include "evse.h"
 #include "api.h"
@@ -6,9 +10,6 @@
 #include <ArduinoJson.h>
 #include <MicroOcpp/Debug.h>
 #include <MicroOcpp/Core/Configuration.h>
-
-static const char *s_http_addr = "http://localhost:8000";  // HTTP port
-static const char *s_root_dir = "web_root";
 
 //cors_headers allow the browser to make requests from any domain, allowing all headers and all methods
 #define DEFAULT_HEADER "Content-Type: application/json\r\n"
@@ -90,7 +91,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             serializeJson(doc, serialized);
             mg_http_reply(c, 200, final_headers, serialized.c_str());
             return;
-        } else if(strncmp(message_data->uri.ptr, "/api", strlen("api")) == 0) {
+        } else if (strncmp(message_data->uri.ptr, "/api", strlen("api")) == 0) {
             #define RESP_BUF_SIZE 1024
             char resp_buf [RESP_BUF_SIZE];
 
@@ -106,12 +107,12 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                 resp_buf, RESP_BUF_SIZE);
             
             mg_http_reply(c, status, final_headers, resp_buf);
-        }
-        //if no specific path is given serve dashboard application file
-        else if (mg_http_match_uri(message_data, "/")) {
-        struct mg_http_serve_opts opts = { .root_dir = "./public" };
-        opts.extra_headers = "Content-Type: text/html\r\nContent-Encoding: gzip\r\n";
-        mg_http_serve_file(c, message_data, "public/bundle.html.gz", &opts);
+        } else if (mg_http_match_uri(message_data, "/")) { //if no specific path is given serve dashboard application file
+            struct mg_http_serve_opts opts;
+            memset(&opts, 0, sizeof(opts));
+            opts.root_dir = "./public";
+            opts.extra_headers = "Content-Type: text/html\r\nContent-Encoding: gzip\r\n";
+            mg_http_serve_file(c, message_data, "public/bundle.html.gz", &opts);
         } else {
             mg_http_reply(c, 404, final_headers, "The required parameters are not given");
         }

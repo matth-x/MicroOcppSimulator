@@ -1,3 +1,7 @@
+// matth-x/MicroOcppSimulator
+// Copyright Matthias Akstaller 2022 - 2024
+// GPL-3.0 License
+
 #include "net_wasm.h"
 
 #include <string>
@@ -7,7 +11,6 @@
 #include <MicroOcpp/Core/Connection.h>
 #include <MicroOcpp/Core/Configuration.h>
 #include <MicroOcpp/Debug.h>
-#include "base64.hpp"
 
 #include "api.h"
 
@@ -304,19 +307,7 @@ public:
         }
 
         if (!auth_key.empty()) {
-            std::string token = cb_id + ":" + auth_key;
-
-            MO_DBG_DEBUG("auth Token=%s", token.c_str());
-
-            unsigned int base64_length = encode_base64_length(token.length());
-            std::vector<unsigned char> base64 (base64_length + 1);
-
-            // encode_base64() places a null terminator automatically, because the output is a string
-            base64_length = encode_base64((const unsigned char*) token.c_str(), token.length(), &base64[0]);
-
-            MO_DBG_DEBUG("auth64 len=%u, auth64 Token=%s", base64_length, &base64[0]);
-
-            basic_auth64 = (const char*) &base64[0];
+            MO_DBG_WARN("WASM app does not support Securiy Profile 2 yet");
         } else {
             MO_DBG_DEBUG("no authentication");
             (void) 0;
