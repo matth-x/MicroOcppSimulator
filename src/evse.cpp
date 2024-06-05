@@ -120,8 +120,13 @@ void Evse::setup() {
     });
 
     setSmartChargingPowerOutput([this] (float limit) {
-        MO_DBG_DEBUG("set limit: %f", limit);
-        this->limit_power = limit;
+        if (limit >= 0.f) {
+            MO_DBG_DEBUG("set limit: %f", limit);
+            this->limit_power = limit;
+        } else {
+            // negative value means no limit defined
+            this->limit_power = SIMULATE_POWER_CONST;
+        }
     }, connectorId);
 }
 
