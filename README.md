@@ -116,7 +116,7 @@ The compiler toolchain should emit the WebAssembly binary and a JavaScript wrapp
 
 Now, the GUI can be developed or built as described in the [webapp repository](https://github.com/agruenb/arduino-ocpp-dashboard).
 
-After building the GUI, the emited files contain the full Simulator functionality. To run the Simualtor, start an HTTP file server in the dist folder and access it with your browser.
+After building the GUI, the emitted files contain the full Simulator functionality. To run the Simulator, start an HTTP file server in the dist folder and access it with your browser.
 
 ## License
 
