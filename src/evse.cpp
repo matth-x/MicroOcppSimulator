@@ -54,6 +54,9 @@ void Evse::setup() {
     snprintf(key, 30, "evPlugged_cId_%u", connectorId);
     trackEvPluggedKey = key;
     trackEvPluggedBool = MicroOcpp::declareConfiguration(trackEvPluggedKey.c_str(), false, SIMULATOR_FN, false, false, false);
+    snprintf(key, 30, "evsePlugged_cId_%u", connectorId);
+    trackEvsePluggedKey = key;
+    trackEvsePluggedBool = MicroOcpp::declareConfiguration(trackEvsePluggedKey.c_str(), false, SIMULATOR_FN, false, false, false);
     snprintf(key, 30, "evReady_cId_%u", connectorId);
     trackEvReadyKey = key;
     trackEvReadyBool = MicroOcpp::declareConfiguration(trackEvReadyKey.c_str(), false, SIMULATOR_FN, false, false, false);
@@ -139,7 +142,7 @@ void Evse::loop() {
         }
     }
 
-    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
+    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvsePluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
 
     simulate_isCharging &= limit_power >= 720.f; //minimum charging current is 6A (720W for 120V grids) according to J1772
 
@@ -207,6 +210,17 @@ void Evse::setEvPlugged(bool plugged) {
 bool Evse::getEvPlugged() {
     if (!trackEvPluggedBool) return false;
     return trackEvPluggedBool->getBool();
+}
+
+void Evse::setEvsePlugged(bool plugged) {
+    if (!trackEvsePluggedBool) return;
+    trackEvsePluggedBool->setBool(plugged);
+    MicroOcpp::configuration_save();
+}
+
+bool Evse::getEvsePlugged() {
+    if (!trackEvsePluggedBool) return false;
+    return trackEvsePluggedBool->getBool();
 }
 
 void Evse::setEvReady(bool ready) {
