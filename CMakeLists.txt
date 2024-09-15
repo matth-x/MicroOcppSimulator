@@ -35,6 +35,7 @@ add_compile_definitions(
     MO_FILENAME_PREFIX="./mo_store/"
     MO_ENABLE_V201=1
     MO_ENABLE_MBEDTLS=1
+    MO_ENABLE_TIMESTAMP_MILLISECONDS=1
 )
 
 add_executable(mo_simulator ${MO_SIM_SRC} ${MO_SIM_MG_SRC})

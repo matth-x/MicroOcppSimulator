@@ -19,14 +19,6 @@ Evse::Evse(unsigned int connectorId) : connectorId{connectorId} {
 
 }
 
-MicroOcpp::Connector *getConnector(unsigned int connectorId) {
-    if (!getOcppContext()) {
-        MO_DBG_ERR("unitialized");
-        return nullptr;
-    }
-    return getOcppContext()->getModel().getConnector(connectorId);
-}
-
 void Evse::setup() {
 
 #if MO_ENABLE_V201
@@ -42,12 +34,6 @@ void Evse::setup() {
         }
     }
 #endif
-
-    auto connector = getConnector(connectorId);
-    if (!connector) {
-        MO_DBG_ERR("invalid state");
-        return;
-    }
 
     char key [30] = {'\0'};
 
@@ -131,12 +117,11 @@ void Evse::setup() {
 }
 
 void Evse::loop() {
-    if (auto connector = getConnector(connectorId)) {
-        auto curStatus = connector->getStatus();
 
-        if (status.compare(MicroOcpp::cstrFromOcppEveState(curStatus))) {
-            status = MicroOcpp::cstrFromOcppEveState(curStatus);
-        }
+    auto curStatus = getChargePointStatus(connectorId);
+
+    if (status.compare(MicroOcpp::cstrFromOcppEveState(curStatus))) {
+        status = MicroOcpp::cstrFromOcppEveState(curStatus);
     }
 
     bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
@@ -164,11 +149,6 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         return;
     }
     std::string uid = uid_cstr;
-    auto connector = getConnector(connectorId);
-    if (!connector) {
-        MO_DBG_ERR("invalid state");
-        return;
-    }
 
 #if MO_ENABLE_V201
     if (auto context = getOcppContext()) {
@@ -178,7 +158,7 @@ void Evse::presentNfcTag(const char *uid_cstr) {
                     if (evse->getTransaction() && evse->getTransaction()->isAuthorized) {
                         evse->endAuthorization(uid_cstr);
                     } else {
-                        evse->beginAuthorization(uid_cstr);
+                        evse->beginAuthorization(MicroOcpp::IdToken(uid_cstr, MicroOcpp::IdToken::Type::KeyCode));
                     }
                     return;
                 }
@@ -187,14 +167,14 @@ void Evse::presentNfcTag(const char *uid_cstr) {
     }
 #endif
 
-    if (connector->getTransaction() && connector->getTransaction()->isActive()) {
-        if (!uid.compare(connector->getTransaction()->getIdTag())) {
-            connector->endTransaction(uid.c_str());
+    if (isTransactionActive(connectorId)) {
+        if (!uid.compare(getTransactionIdTag(connectorId))) {
+            endTransaction(uid.c_str(), "Local", connectorId);
         } else {
             MO_DBG_INFO("RFID card denied");
         }
     } else {
-        connector->beginTransaction(uid.c_str());
+        beginTransaction(uid.c_str(), connectorId);
     }
 }
 
@@ -232,30 +212,15 @@ bool Evse::getEvseReady() {
 }
 
 const char *Evse::getSessionIdTag() {
-    auto connector = getConnector(connectorId);
-    if (!connector) {
-        MO_DBG_ERR("invalid state");
-        return nullptr;
-    }
-    return connector->getTransaction() ? connector->getTransaction()->getIdTag() : nullptr;
+    return getTransactionIdTag(connectorId) ? getTransactionIdTag(connectorId) : "";
 }
 
 int Evse::getTransactionId() {
-    auto connector = getConnector(connectorId);
-    if (!connector) {
-        MO_DBG_ERR("invalid state");
-        return -1;
-    }
-    return connector->getTransaction() ? connector->getTransaction()->getTransactionId() : -1;
+    return getTransaction(connectorId) ? getTransaction(connectorId)->getTransactionId() : -1;
 }
 
 bool Evse::chargingPermitted() {
-    auto connector = getConnector(connectorId);
-    if (!connector) {
-        MO_DBG_ERR("invalid state");
-        return false;
-    }
-    return connector->ocppPermitsCharge();
+    return ocppPermitsCharge(connectorId);
 }
 
 int Evse::getPower() {
