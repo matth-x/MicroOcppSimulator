@@ -83,6 +83,9 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
             if (request.containsKey("evPlugged")) {
                 evse->setEvPlugged(request["evPlugged"]);
             }
+            if (request.containsKey("evsePlugged")) {
+            evse->setEvsePlugged(request["evsePlugged"]);
+            }
             if (request.containsKey("evReady")) {
                 evse->setEvReady(request["evReady"]);
             }
@@ -92,6 +95,7 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
         }
 
         response["evPlugged"] = evse->getEvPlugged();
+        response["evsePlugged"] = evse->getEvsePlugged();
         response["evReady"] = evse->getEvReady();
         response["evseReady"] = evse->getEvseReady();
         response["chargePointStatus"] = evse->getOcppStatus();

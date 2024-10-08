@@ -17,6 +17,8 @@ private:
 
     std::shared_ptr<MicroOcpp::Configuration> trackEvPluggedBool;
     std::string trackEvPluggedKey;
+    std::shared_ptr<MicroOcpp::Configuration> trackEvsePluggedBool;
+    std::string trackEvsePluggedKey;
     std::shared_ptr<MicroOcpp::Configuration> trackEvReadyBool;
     std::string trackEvReadyKey;
     std::shared_ptr<MicroOcpp::Configuration> trackEvseReadyBool;
@@ -42,6 +44,10 @@ public:
     void setEvPlugged(bool plugged);
 
     bool getEvPlugged();
+
+    void setEvsePlugged(bool plugged);
+    
+    bool getEvsePlugged();
 
     void setEvReady(bool ready);
 
