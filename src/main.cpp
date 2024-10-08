@@ -3,10 +3,16 @@
 // GPL-3.0 License
 
 #include <iostream>
+#include <signal.h>
+
+#include <mbedtls/platform.h>
 
 #include <MicroOcpp.h>
+#include <MicroOcpp/Core/Context.h>
 #include "evse.h"
 #include "api.h"
+
+#include <MicroOcpp/Core/Memory.h>
 
 #if MO_NUMCONNECTORS == 3
 std::array<Evse, MO_NUMCONNECTORS - 1> connectors {{1,2}};
@@ -15,6 +21,10 @@ std::array<Evse, MO_NUMCONNECTORS - 1> connectors {{1}};
 #endif
 
 bool g_isOcpp201 = false;
+bool g_runSimulator = true;
+
+bool g_isUpAndRunning = false; //if the initial BootNotification and StatusNotifications got through + 1s delay
+unsigned int g_bootNotificationTime = 0;
 
 #define MO_NETLIB_MONGOOSE 1
 #define MO_NETLIB_WASM 2
@@ -41,6 +51,31 @@ MicroOcpp::Connection *conn = nullptr;
 #else
 #error Please ensure that build flag MO_NETLIB is set as MO_NETLIB_MONGOOSE or MO_NETLIB_WASM
 #endif
+
+#if MBEDTLS_PLATFORM_MEMORY //configure MbedTLS with allocation hook functions
+
+void *mo_mem_mbedtls_calloc( size_t n, size_t count ) {
+    size_t size = n * count;
+    auto ptr = MO_MALLOC("MbedTLS", size);
+    if (ptr) {
+        memset(ptr, 0, size);
+    }
+    return ptr;
+}
+void mo_mem_mbedtls_free( void *ptr ) {
+    MO_FREE(ptr);
+}
+
+#endif //MBEDTLS_PLATFORM_MEMORY
+
+void mo_sim_sig_handler(int s){
+
+    if (!g_runSimulator) { //already tried to shut down, now force stop
+        exit(EXIT_FAILURE);
+    }
+
+    g_runSimulator = false; //shut down simulator gracefully
+}
 
 /*
  * Setup MicroOcpp and API
@@ -94,6 +129,17 @@ void app_loop() {
 #if MO_NETLIB == MO_NETLIB_MONGOOSE
 
 int main() {
+
+#if MBEDTLS_PLATFORM_MEMORY
+    mbedtls_platform_set_calloc_free(mo_mem_mbedtls_calloc, mo_mem_mbedtls_free);
+#endif //MBEDTLS_PLATFORM_MEMORY
+
+    struct sigaction sigIntHandler;
+    sigIntHandler.sa_handler = mo_sim_sig_handler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
     mg_log_set(MG_LL_INFO);                            
     mg_mgr_init(&mgr);
 
@@ -117,10 +163,31 @@ int main() {
     server_initialize(osock);
     app_setup(*osock, filesystem);
 
-    for (;;) {                    // Block forever
+    setOnResetExecute([] (bool isHard) {
+        g_runSimulator = false;
+    });
+
+    while (g_runSimulator) { //Run Simulator until OCPP Reset is executed or user presses Ctrl+C
         mg_mgr_poll(&mgr, 100);
         app_loop();
+
+        if (!g_bootNotificationTime && getOcppContext()->getModel().getClock().now() >= MicroOcpp::MIN_TIME) {
+            //time has been set, BootNotification succeeded
+            g_bootNotificationTime = mocpp_tick_ms();
+        }
+
+        if (!g_isUpAndRunning && g_bootNotificationTime && mocpp_tick_ms() - g_bootNotificationTime >= 1000) {
+            printf("[Sim] Resetting maximum heap usage after boot success\n");
+            g_isUpAndRunning = true;
+            MO_MEM_RESET();
+        }
     }
+
+    printf("[Sim] Shutting down Simulator\n");
+
+    MO_MEM_PRINT_STATS();
+
+    mocpp_deinitialize();
 
     delete osock;
     mg_mgr_free(&mgr);
