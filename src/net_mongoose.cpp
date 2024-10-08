@@ -27,27 +27,27 @@ char* toStringPtr(std::string cppString){
   return cstr;
 }
 
-void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+void http_serve(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_HTTP_MSG) {
         //struct mg_http_message *message_data = (struct mg_http_message *) ev_data;
         struct mg_http_message *message_data = reinterpret_cast<struct mg_http_message *>(ev_data);
         const char *final_headers = DEFAULT_HEADER CORS_HEADERS;
         struct mg_str json = message_data->body;
 
-        MO_DBG_VERBOSE("%.*s", 20, message_data->uri.ptr);
+        MO_DBG_VERBOSE("%.*s", 20, message_data->uri.buf);
 
         MicroOcpp::Method method = MicroOcpp::Method::UNDEFINED;
 
-        if (!mg_vcasecmp(&message_data->method, "POST")) {
+        if (!mg_strcasecmp(message_data->method, mg_str("POST"))) {
             method = MicroOcpp::Method::POST;
             MO_DBG_VERBOSE("POST");
-        } else if (!mg_vcasecmp(&message_data->method, "GET")) {
+        } else if (!mg_strcasecmp(message_data->method, mg_str("GET"))) {
             method = MicroOcpp::Method::GET;
             MO_DBG_VERBOSE("GET");
         }
 
         //start different api endpoints
-        if(mg_http_match_uri(message_data, "/api/websocket")){
+        if(mg_match(message_data->uri, mg_str("/api/websocket"), NULL)){
             MO_DBG_VERBOSE("query websocket");
             auto webSocketPingIntervalInt = MicroOcpp::declareConfiguration<int>("WebSocketPingInterval", 10, MO_WSCONN_FN);
             auto reconnectIntervalInt = MicroOcpp::declareConfiguration<int>(MO_CONFIG_EXT_PREFIX "ReconnectInterval", 30, MO_WSCONN_FN);
@@ -91,23 +91,23 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
             serializeJson(doc, serialized);
             mg_http_reply(c, 200, final_headers, serialized.c_str());
             return;
-        } else if (strncmp(message_data->uri.ptr, "/api", strlen("api")) == 0) {
+        } else if (strncmp(message_data->uri.buf, "/api", strlen("api")) == 0) {
             #define RESP_BUF_SIZE 1024
             char resp_buf [RESP_BUF_SIZE];
 
             //replace endpoint-body separator by null
-            if (char *c = strchr((char*) message_data->uri.ptr, ' ')) {
+            if (char *c = strchr((char*) message_data->uri.buf, ' ')) {
                 *c = '\0';
             }
 
             int status = mocpp_api_call(
-                message_data->uri.ptr + strlen("/api"),
+                message_data->uri.buf + strlen("/api"),
                 method,
-                message_data->body.ptr,
+                message_data->body.buf,
                 resp_buf, RESP_BUF_SIZE);
             
             mg_http_reply(c, status, final_headers, resp_buf);
-        } else if (mg_http_match_uri(message_data, "/")) { //if no specific path is given serve dashboard application file
+        } else if (mg_match(message_data->uri, mg_str("/"), NULL)) { //if no specific path is given serve dashboard application file
             struct mg_http_serve_opts opts;
             memset(&opts, 0, sizeof(opts));
             opts.root_dir = "./public";

@@ -36,6 +36,7 @@ add_compile_definitions(
     MO_ENABLE_V201=1
     MO_ENABLE_MBEDTLS=1
     MO_ENABLE_TIMESTAMP_MILLISECONDS=1
+    MO_MG_USE_VERSION=MO_MG_V715
 )
 
 add_executable(mo_simulator ${MO_SIM_SRC} ${MO_SIM_MG_SRC})
