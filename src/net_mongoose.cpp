@@ -16,22 +16,49 @@
 #define CORS_HEADERS "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers:Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers\r\nAccess-Control-Allow-Methods: GET,HEAD,OPTIONS,POST,PUT\r\n"
 
 MicroOcpp::MOcppMongooseClient *ao_sock = nullptr;
+const char *api_cert = "";
+const char *api_key = "";
+const char *api_user = "";
+const char *api_pass = "";
 
-void server_initialize(MicroOcpp::MOcppMongooseClient *osock) {
-  ao_sock = osock;
+void server_initialize(MicroOcpp::MOcppMongooseClient *osock, const char *cert, const char *key, const char *user, const char *pass) {
+    ao_sock = osock;
+    api_cert = cert;
+    api_key = key;
+    api_user = user;
+    api_pass = pass;
 }
 
-char* toStringPtr(std::string cppString){
-  char *cstr = new char[cppString.length() + 1];
-  strcpy(cstr, cppString.c_str());
-  return cstr;
+bool api_check_basic_auth(const char *user, const char *pass) {
+    if (strcmp(api_user, user)) {
+        return false;
+    }
+    if (strcmp(api_pass, pass)) {
+        return false;
+    }
+    return true;
 }
 
 void http_serve(struct mg_connection *c, int ev, void *ev_data) {
-    if (ev == MG_EV_HTTP_MSG) {
+    if (ev == MG_EV_ACCEPT) {
+        if (mg_url_is_ssl((const char*)c->fn_data)) {  // TLS listener!
+            struct mg_tls_opts opts = {0};
+            opts.cert = mg_str(api_cert);
+            opts.key = mg_str(api_key);
+            mg_tls_init(c, &opts);
+        }
+    } else if (ev == MG_EV_HTTP_MSG) {
         //struct mg_http_message *message_data = (struct mg_http_message *) ev_data;
         struct mg_http_message *message_data = reinterpret_cast<struct mg_http_message *>(ev_data);
         const char *final_headers = DEFAULT_HEADER CORS_HEADERS;
+
+        char user[64], pass[64];
+        mg_http_creds(message_data, user, sizeof(user), pass, sizeof(pass));
+        if (!api_check_basic_auth(user, pass)) {
+            mg_http_reply(c, 403, final_headers, "Not Authorised\n");
+            return;
+        }
+
         struct mg_str json = message_data->body;
 
         MO_DBG_VERBOSE("%.*s", 20, message_data->uri.buf);

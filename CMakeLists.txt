@@ -98,7 +98,7 @@ else()
         mbedx509
     )
     target_compile_definitions(mo_simulator PUBLIC
-        MG_ENABLE_MBEDTLS=1
+        MG_TLS=MG_TLS_MBED
     )
 
 endif()
