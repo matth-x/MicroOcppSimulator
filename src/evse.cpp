@@ -155,8 +155,8 @@ void Evse::presentNfcTag(const char *uid_cstr) {
         if (context->getVersion().major == 2) {
             if (auto txService = context->getModel().getTransactionService()) {
                 if (auto evse = txService->getEvse(connectorId)) {
-                    if (evse->getTransaction() && evse->getTransaction()->isAuthorized) {
-                        evse->endAuthorization(uid_cstr);
+                    if (evse->getTransaction() && evse->getTransaction()->isAuthorizationActive) {
+                        evse->endAuthorization(MicroOcpp::IdToken(uid_cstr, MicroOcpp::IdToken::Type::KeyCode));
                     } else {
                         evse->beginAuthorization(MicroOcpp::IdToken(uid_cstr, MicroOcpp::IdToken::Type::KeyCode));
                     }
