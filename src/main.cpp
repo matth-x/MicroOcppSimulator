@@ -152,6 +152,9 @@ int main() {
 
     load_ocpp_version(filesystem);
 
+    struct mg_str api_cert = mg_file_read(&mg_fs_posix, MO_FILENAME_PREFIX "api_cert.pem");
+    struct mg_str api_key = mg_file_read(&mg_fs_posix, MO_FILENAME_PREFIX "api_key.pem");
+
     auto api_settings_doc = MicroOcpp::FilesystemUtils::loadJson(filesystem, MO_FILENAME_PREFIX "api.jsn", "Simulator");
     if (!api_settings_doc) {
         api_settings_doc = MicroOcpp::makeJsonDoc("Simulator", 0);
@@ -173,7 +176,7 @@ int main() {
             MicroOcpp::ProtocolVersion{1,6}
         );
 
-    server_initialize(osock, api_settings["cert"] | "", api_settings["key"] | "", api_settings["user"] | "", api_settings["pass"] | "");
+    server_initialize(osock, api_cert.buf ? api_cert.buf : "", api_key.buf ? api_key.buf : "", api_settings["user"] | "", api_settings["pass"] | "");
     app_setup(*osock, filesystem);
 
     setOnResetExecute([] (bool isHard) {
@@ -204,6 +207,8 @@ int main() {
 
     delete osock;
     mg_mgr_free(&mgr);
+    free(api_cert.buf);
+    free(api_key.buf);
     return 0;
 }
 
