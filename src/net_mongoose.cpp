@@ -120,7 +120,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data) {
             mg_http_reply(c, 200, final_headers, serialized.c_str());
             return;
         } else if (strncmp(message_data->uri.buf, "/api", strlen("api")) == 0) {
-            #define RESP_BUF_SIZE 1024
+            #define RESP_BUF_SIZE 8192
             char resp_buf [RESP_BUF_SIZE];
 
             //replace endpoint-body separator by null

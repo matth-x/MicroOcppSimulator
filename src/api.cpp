@@ -6,6 +6,7 @@
 #include "mongoose.h"
 
 #include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Core/Memory.h>
 #include <MicroOcpp/Model/ConnectorBase/EvseId.h>
 #include <MicroOcpp/Model/Authorization/IdToken.h>
 
@@ -189,6 +190,9 @@ int mocpp_api2_call(const char *uri_raw, size_t uri_raw_len, MicroOcpp::Method m
     }
 
     if (mg_match(uri, mg_str("/plugin"), NULL)) {
+        if (method != MicroOcpp::Method::POST) {
+            return 405;
+        }
         if (evse_id < 0) {
             snprintf(resp_body, resp_body_size, "no action taken");
             return 200;
@@ -200,6 +204,9 @@ int mocpp_api2_call(const char *uri_raw, size_t uri_raw_len, MicroOcpp::Method m
             return 200;
         }
     } else if (mg_match(uri, mg_str("/plugout"), NULL)) {
+        if (method != MicroOcpp::Method::POST) {
+            return 405;
+        }
         if (evse_id < 0) {
             snprintf(resp_body, resp_body_size, "no action taken");
             return 200;
@@ -211,6 +218,9 @@ int mocpp_api2_call(const char *uri_raw, size_t uri_raw_len, MicroOcpp::Method m
             return 200;
         }
     } else if (mg_match(uri, mg_str("/end"), NULL)) {
+        if (method != MicroOcpp::Method::POST) {
+            return 405;
+        }
         bool trackEvReady = false;
         for (size_t i = 0; i < connectors.size(); i++) {
             trackEvReady |= connectors[i].getEvReady();
@@ -219,6 +229,9 @@ int mocpp_api2_call(const char *uri_raw, size_t uri_raw_len, MicroOcpp::Method m
         snprintf(resp_body, resp_body_size, "%s", trackEvReady ? "suspended EV" : "EV already suspended");
         return 200;
     } else if (mg_match(uri, mg_str("/state"), NULL)) {
+        if (method != MicroOcpp::Method::POST) {
+            return 405;
+        }
         struct mg_str ready_str = mg_http_var(query, mg_str("ready"));
         bool ready = true;
         if (ready_str.buf) {
@@ -243,6 +256,9 @@ int mocpp_api2_call(const char *uri_raw, size_t uri_raw_len, MicroOcpp::Method m
         snprintf(resp_body, resp_body_size, "no action taken - EV not plugged");
         return 200;
     } else if (mg_match(uri, mg_str("/authorize"), NULL)) {
+        if (method != MicroOcpp::Method::POST) {
+            return 405;
+        }
         struct mg_str id = mg_http_var(query, mg_str("id"));
         if (!id.buf) {
             snprintf(resp_body, resp_body_size, "missing id");
@@ -289,6 +305,43 @@ int mocpp_api2_call(const char *uri_raw, size_t uri_raw_len, MicroOcpp::Method m
                                                  "no action taken (EVSE not authorized)");
 
         return 200;
+    } else if (mg_match(uri, mg_str("/memory/info"), NULL)) {
+        #if MO_OVERRIDE_ALLOCATION && MO_ENABLE_HEAP_PROFILER
+        {
+            if (method != MicroOcpp::Method::GET) {
+                return 405;
+            }
+
+            int ret = mo_mem_write_stats_json(resp_body, resp_body_size);
+            if (ret < 0 || ret >= resp_body_size) {
+                snprintf(resp_body, resp_body_size, "internal error");
+                return 500;
+            }
+
+            return 200;
+        }
+        #else
+        {
+            snprintf(resp_body, resp_body_size, "memory profiler disabled");
+            return 404;
+        }
+        #endif
+    } else if (mg_match(uri, mg_str("/memory/reset"), NULL)) {
+        #if MO_OVERRIDE_ALLOCATION && MO_ENABLE_HEAP_PROFILER
+        {
+            if (method != MicroOcpp::Method::POST) {
+                return 405;
+            }
+
+            MO_MEM_RESET();
+        }
+        #else
+        {
+            snprintf(resp_body, resp_body_size, "memory profiler disabled");
+            return 404;
+        }
+        #endif
+
     }
 
     return 404;
