@@ -42,6 +42,7 @@ bool api_check_basic_auth(const char *user, const char *pass) {
 void http_serve(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_ACCEPT) {
         if (mg_url_is_ssl((const char*)c->fn_data)) {  // TLS listener!
+            MO_DBG_VERBOSE("API TLS setup");
             struct mg_tls_opts opts = {0};
             opts.cert = mg_str(api_cert);
             opts.key = mg_str(api_key);
@@ -55,7 +56,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data) {
         char user[64], pass[64];
         mg_http_creds(message_data, user, sizeof(user), pass, sizeof(pass));
         if (!api_check_basic_auth(user, pass)) {
-            mg_http_reply(c, 403, final_headers, "Not Authorised\n");
+            mg_http_reply(c, 401, final_headers, "Unauthorized. Expect Basic Auth user and / or password\n");
             return;
         }
 
@@ -127,12 +128,24 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data) {
                 *c = '\0';
             }
 
-            int status = mocpp_api_call(
-                message_data->uri.buf + strlen("/api"),
-                method,
-                message_data->body.buf,
-                resp_buf, RESP_BUF_SIZE);
-            
+            int status = 404;
+            if (status == 404) {
+                status = mocpp_api2_call(
+                    message_data->uri.buf + strlen("/api"),
+                    message_data->uri.len - strlen("/api"),
+                    method,
+                    message_data->query.buf,
+                    message_data->query.len,
+                    resp_buf, RESP_BUF_SIZE);
+            }
+            if (status == 404) {
+                status = mocpp_api_call(
+                    message_data->uri.buf + strlen("/api"),
+                    method,
+                    message_data->body.buf,
+                    resp_buf, RESP_BUF_SIZE);
+            }
+
             mg_http_reply(c, status, final_headers, resp_buf);
         } else if (mg_match(message_data->uri, mg_str("/"), NULL)) { //if no specific path is given serve dashboard application file
             struct mg_http_serve_opts opts;
@@ -141,7 +154,7 @@ void http_serve(struct mg_connection *c, int ev, void *ev_data) {
             opts.extra_headers = "Content-Type: text/html\r\nContent-Encoding: gzip\r\n";
             mg_http_serve_file(c, message_data, "public/bundle.html.gz", &opts);
         } else {
-            mg_http_reply(c, 404, final_headers, "The required parameters are not given");
+            mg_http_reply(c, 404, final_headers, "API endpoint not found");
         }
     }
 }
