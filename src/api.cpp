@@ -334,6 +334,7 @@ int mocpp_api2_call(const char *uri_raw, size_t uri_raw_len, MicroOcpp::Method m
             }
 
             MO_MEM_RESET();
+            return 200;
         }
         #else
         {
