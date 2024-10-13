@@ -8,6 +8,7 @@
 #include <array>
 #include <string>
 #include <MicroOcpp/Core/Configuration.h>
+#include <MicroOcpp/Version.h>
 
 #define SIMULATOR_FN MO_FILENAME_PREFIX "simulator.jsn"
 
@@ -40,6 +41,10 @@ public:
     void loop();
 
     void presentNfcTag(const char *uid);
+
+#if MO_ENABLE_V201
+    bool presentNfcTag(const char *uid, const char *type);
+#endif //MO_ENABLE_V201
 
     void setEvPlugged(bool plugged);
 

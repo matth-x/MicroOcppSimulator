@@ -9,6 +9,7 @@
 
 #include <MicroOcpp.h>
 #include <MicroOcpp/Core/Context.h>
+#include <MicroOcpp/Core/FilesystemUtils.h>
 #include "evse.h"
 #include "api.h"
 
@@ -128,6 +129,10 @@ void app_loop() {
 
 #if MO_NETLIB == MO_NETLIB_MONGOOSE
 
+#ifndef MO_SIM_ENDPOINT_URL
+#define MO_SIM_ENDPOINT_URL "http://0.0.0.0:8000" //URL to forward to mg_http_listen(). Will be ignored if the URL field exists in api.jsn
+#endif
+
 int main() {
 
 #if MBEDTLS_PLATFORM_MEMORY
@@ -143,11 +148,22 @@ int main() {
     mg_log_set(MG_LL_INFO);                            
     mg_mgr_init(&mgr);
 
-    mg_http_listen(&mgr, "0.0.0.0:8000", http_serve, NULL);     // Create listening connection
-
     auto filesystem = MicroOcpp::makeDefaultFilesystemAdapter(MicroOcpp::FilesystemOpt::Use_Mount_FormatOnFail);
 
     load_ocpp_version(filesystem);
+
+    struct mg_str api_cert = mg_file_read(&mg_fs_posix, MO_FILENAME_PREFIX "api_cert.pem");
+    struct mg_str api_key = mg_file_read(&mg_fs_posix, MO_FILENAME_PREFIX "api_key.pem");
+
+    auto api_settings_doc = MicroOcpp::FilesystemUtils::loadJson(filesystem, MO_FILENAME_PREFIX "api.jsn", "Simulator");
+    if (!api_settings_doc) {
+        api_settings_doc = MicroOcpp::makeJsonDoc("Simulator", 0);
+    }
+    JsonObject api_settings = api_settings_doc->as<JsonObject>();
+
+    const char *api_url = api_settings["url"] | MO_SIM_ENDPOINT_URL;
+
+    mg_http_listen(&mgr, api_url, http_serve, (void*)api_url);     // Create listening connection
 
     osock = new MicroOcpp::MOcppMongooseClient(&mgr,
         "ws://echo.websocket.events",
@@ -160,7 +176,7 @@ int main() {
             MicroOcpp::ProtocolVersion{1,6}
         );
 
-    server_initialize(osock);
+    server_initialize(osock, api_cert.buf ? api_cert.buf : "", api_key.buf ? api_key.buf : "", api_settings["user"] | "", api_settings["pass"] | "");
     app_setup(*osock, filesystem);
 
     setOnResetExecute([] (bool isHard) {
@@ -191,6 +207,8 @@ int main() {
 
     delete osock;
     mg_mgr_free(&mgr);
+    free(api_cert.buf);
+    free(api_key.buf);
     return 0;
 }
 

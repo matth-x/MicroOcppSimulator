@@ -13,7 +13,7 @@ namespace MicroOcpp {
 class MOcppMongooseClient;
 }
 
-void server_initialize(MicroOcpp::MOcppMongooseClient *osock);
+void server_initialize(MicroOcpp::MOcppMongooseClient *osock, const char *cert = "", const char *key = "", const char *user = "", const char *pass = "");
 
 void http_serve(struct mg_connection *c, int ev, void *ev_data);
 

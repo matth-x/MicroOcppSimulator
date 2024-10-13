@@ -9,6 +9,7 @@
 #include <MicroOcpp/Model/Transactions/Transaction.h>
 #include <MicroOcpp/Model/Transactions/TransactionService.h>
 #include <MicroOcpp/Model/Variables/VariableService.h>
+#include <MicroOcpp/Model/Authorization/IdToken.h>
 #include <MicroOcpp/Operations/StatusNotification.h>
 #include <MicroOcpp/Version.h>
 #include <MicroOcpp/Debug.h>
@@ -146,40 +147,53 @@ void Evse::loop() {
 
 }
 
-void Evse::presentNfcTag(const char *uid_cstr) {
-    if (!uid_cstr) {
+void Evse::presentNfcTag(const char *uid) {
+    if (!uid) {
         MO_DBG_ERR("invalid argument");
         return;
     }
-    std::string uid = uid_cstr;
 
 #if MO_ENABLE_V201
     if (auto context = getOcppContext()) {
         if (context->getVersion().major == 2) {
-            if (auto txService = context->getModel().getTransactionService()) {
-                if (auto evse = txService->getEvse(connectorId)) {
-                    if (evse->getTransaction() && evse->getTransaction()->isAuthorizationActive) {
-                        evse->endAuthorization(MicroOcpp::IdToken(uid_cstr, MicroOcpp::IdToken::Type::KeyCode));
-                    } else {
-                        evse->beginAuthorization(MicroOcpp::IdToken(uid_cstr, MicroOcpp::IdToken::Type::KeyCode));
-                    }
-                    return;
-                }
-            }
+            presentNfcTag(uid, "ISO14443");
+            return;
         }
     }
 #endif
 
     if (isTransactionActive(connectorId)) {
-        if (!uid.compare(getTransactionIdTag(connectorId))) {
-            endTransaction(uid.c_str(), "Local", connectorId);
+        if (!strcmp(uid, getTransactionIdTag(connectorId))) {
+            endTransaction(uid, "Local", connectorId);
         } else {
             MO_DBG_INFO("RFID card denied");
         }
     } else {
-        beginTransaction(uid.c_str(), connectorId);
+        beginTransaction(uid, connectorId);
     }
 }
+
+#if MO_ENABLE_V201
+bool Evse::presentNfcTag(const char *uid, const char *type) {
+
+    MicroOcpp::IdToken idToken {nullptr, MicroOcpp::IdToken::Type::UNDEFINED, "Simulator"};
+    if (!idToken.parseCstr(uid, type)) {
+        return false;
+    }
+
+    if (auto txService = getOcppContext()->getModel().getTransactionService()) {
+        if (auto evse = txService->getEvse(connectorId)) {
+            if (evse->getTransaction() && evse->getTransaction()->isAuthorizationActive) {
+                evse->endAuthorization(idToken);
+            } else {
+                evse->beginAuthorization(idToken);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+#endif
 
 void Evse::setEvPlugged(bool plugged) {
     if (!trackEvPluggedBool) return;
