@@ -28,9 +28,7 @@ void Evse::setup() {
             //load some example variables for testing
 
             if (auto varService = context->getModel().getVariableService()) {
-                varService->declareVariable<bool>("AuthCtrlr", "LocalAuthorizeOffline", false, MO_VARIABLE_VOLATILE);
-                varService->declareVariable<int>("OCPPCommCtrlr", "OfflineThreshold", false, MO_VARIABLE_VOLATILE);
-                varService->declareVariable<bool>("TxCtrlr", "StopTxOnInvalidId", false, MO_VARIABLE_VOLATILE);
+                varService->declareVariable<bool>("AuthCtrlr", "LocalAuthorizeOffline", false, MicroOcpp::Variable::Mutability::ReadOnly, false);
             }
         }
     }
