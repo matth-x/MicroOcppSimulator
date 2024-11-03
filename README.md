@@ -4,13 +4,13 @@
 [![Build (Docker)](https://github.com/matth-x/MicroOcppSimulator/workflows/Docker/badge.svg)]((https://github.com/matth-x/MicroOcppSimulator/actions))
 [![Build (WebAssembly)](https://github.com/matth-x/MicroOcppSimulator/workflows/WebAssembly/badge.svg)]((https://github.com/matth-x/MicroOcppSimulator/actions))
 
-Tester / Demo App for the [MicroOcpp](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu, WSL, WebAssembly or MSYS2. Online demo: [Try it](https://demo.micro-ocpp.com/)
+Tester / Demo App for the [MicroOCPP](https://github.com/matth-x/MicroOcpp) Client, running on native Ubuntu, WSL, WebAssembly or MSYS2. Online demo: [Try it](https://demo.micro-ocpp.com/)
 
 [![Screenshot](https://github.com/agruenb/arduino-ocpp-dashboard/blob/master/docs/img/status_page.png)](https://demo.micro-ocpp.com/)
 
 The Simulator has two purposes:
-- As a development tool, it allows to run MicroOcpp directly on the host computer and simplifies the development (no flashing of the microcontroller required)
-- As a demonstration tool, it allows backend operators to test and use MicroOcpp without the need to set up an actual microcontroller or to buy an actual charger with MicroOcpp.
+- As a development tool, it allows to run MicroOCPP directly on the host computer and simplifies the development (no flashing of the microcontroller required)
+- As a demonstration tool, it allows backend operators to test and use MicroOCPP without the need to set up an actual microcontroller or to buy an actual charger with MicroOCPP.
 
 That means that the Simulator runs on your computer and connects to an OCPP server using the same software like a
 microcontroller. It provides a Graphical User Interface to show the connection status and to trigger simulated charging
