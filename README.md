@@ -21,7 +21,14 @@ sessions (and further simulated actions).
 The Simulator can be run on Docker. This is the easiest way to get it up and running. The Docker image is based on
 Ubuntu 20.04 and contains all necessary dependencies.
 
-Firstly, build the image:
+Firstly, download from github:
+
+```shell
+gh repo clone matth-x/MicroOcppSimulator
+cd MicroOcppSimulator/
+```
+
+Then build the image:
 
 ```shell
 docker build -t matthx/microocppsimulator:latest .
