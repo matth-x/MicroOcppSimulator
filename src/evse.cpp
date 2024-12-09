@@ -126,7 +126,7 @@ void Evse::loop() {
         status = MicroOcpp::cstrFromOcppEveState(curStatus);
     }
 
-    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvsePluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
+    bool simulate_isCharging = ocppPermitsCharge(connectorId) && trackEvPluggedBool->getBool() && trackEvReadyBool->getBool() && trackEvseReadyBool->getBool();
 
     simulate_isCharging &= limit_power >= 720.f; //minimum charging current is 6A (720W for 120V grids) according to J1772
 
