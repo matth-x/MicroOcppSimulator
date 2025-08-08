@@ -22,8 +22,14 @@ RUN cmake --build ./build -j 16 --target mo_simulator -j 16
 # Grant execute permissions to the shell script
 RUN chmod +x /MicroOcppSimulator/build/mo_simulator
 
-# Expose port 8000
-EXPOSE 8000
+# Copy pre-built frontend public folder for runtime API configuration
+COPY public /public
 
-# Run the shell script inside the container
+# Copy entrypoint script for runtime environment setup
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["./build/mo_simulator"]
+
+EXPOSE 8000

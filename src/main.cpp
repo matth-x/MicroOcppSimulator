@@ -101,10 +101,20 @@ void load_ocpp_version(std::shared_ptr<MicroOcpp::FilesystemAdapter> filesystem)
 }
 
 void app_setup(MicroOcpp::Connection& connection, std::shared_ptr<MicroOcpp::FilesystemAdapter> filesystem) {
+    // Configure charger credentials from environment variables or use defaults
+    const char *envId = std::getenv("CHARGER_ID");
+    const char *envKey = std::getenv("CHARGER_KEY");
+    std::string chargerId = envId ? envId : "MicroOcpp Simulator";
+    std::string chargerKey = envKey ? envKey : "MicroOcpp";
+    
+    // Log runtime configuration values for debugging
+    std::cout << "[INFO] Charger ID: " << chargerId << std::endl;
+    std::cout << "[INFO] Charger Key: " << chargerKey << std::endl;
+
     mocpp_initialize(connection,
             g_isOcpp201 ?
-                ChargerCredentials::v201("MicroOcpp Simulator", "MicroOcpp") :
-                ChargerCredentials("MicroOcpp Simulator", "MicroOcpp"),
+                ChargerCredentials::v201(chargerId.c_str(), chargerKey.c_str()) :
+                ChargerCredentials(chargerId.c_str(), chargerKey.c_str()),
             filesystem,
             false,
             g_isOcpp201 ?
