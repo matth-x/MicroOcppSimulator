@@ -1,40 +1,27 @@
-#build, compress the web-app and move the bundle file to the public folder
+# build_webapp.ps1
+# Build and compress frontend, do not handle API_ROOT
 
-#exit script on error
-$ErrorActionPreference = "Stop"
-#check relevant installs
-echo "[info] NodeJS and npm need to be installed to build the web-app"
+$ErrorActionPreference = 'Stop'
+Write-Host "[info] Installing dependencies and building frontend..."
 
-cd ./webapp-src
-
-#fetch most recent version
+Set-Location ./webapp-src
 git pull
 
-echo "Building web-app..."
-
-#check .env.production file exists
-$file = ".env.production"
-
-#If the file does not exist, create it.
-if (Test-Path -Path $file -PathType Leaf) {
-   echo "production environment found"
-}else{
-   echo "no .env.production file found"
-   cd ..
-   exit 1
-}
-   
-
-#install dependencies
 npm install
-#build the webapp
 npm run build
-#compress the project
 npm run compress
 
-#move the compressed file into the public folder
-Move-Item ./dist/bundle.html.gz ../public/ -Force
+# Ensure bundle.html.gz exists
+if (-not (Test-Path "./dist/bundle.html.gz")) {
+  Write-Error "[error] Missing dist/bundle.html.gz, build failed"
+  exit 1
+}
 
-echo "[success] Up-to-date version of the web-app bundle was placed in the /public folder!"
+# Move compressed file to public
+if (-not (Test-Path "../public")) { 
+    New-Item -ItemType Directory -Path "../public" | Out-Null 
+}
+Move-Item "./dist/bundle.html.gz" "../public/" -Force
 
-cd ..
+Write-Host "[success] Frontend resources packaged and placed in public/ directory"
+Set-Location ..
