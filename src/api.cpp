@@ -86,9 +86,15 @@ int mocpp_api_call(const char *endpoint, MicroOcpp::Method method, const char *b
         if (method == MicroOcpp::Method::POST) {
             if (request.containsKey("evPlugged")) {
                 evse->setEvPlugged(request["evPlugged"]);
+                // Older dashboard versions only expose one "EV plugged"
+                // control. Keep both cable ends in sync unless the caller
+                // explicitly provides the EVSE-side state.
+                if (!request.containsKey("evsePlugged")) {
+                    evse->setEvsePlugged(request["evPlugged"]);
+                }
             }
             if (request.containsKey("evsePlugged")) {
-            evse->setEvsePlugged(request["evsePlugged"]);
+                evse->setEvsePlugged(request["evsePlugged"]);
             }
             if (request.containsKey("evReady")) {
                 evse->setEvReady(request["evReady"]);
